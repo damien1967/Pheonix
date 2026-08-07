@@ -59,3 +59,9 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 }
+
+tasks.withType<Test> {
+    testLogging {
+        events("passed", "skipped", "failed")
+    }
+}

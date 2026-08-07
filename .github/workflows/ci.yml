@@ -7,7 +7,7 @@ on:
     branches: [ main ]
 
 jobs:
-  test:
+  jvm-and-android:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -17,5 +17,18 @@ jobs:
           distribution: 'temurin'
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
-      - name: Run shared tests
-        run: ./gradlew :shared:testDebugUnitTest
+      - name: Run shared and Android tests
+        run: ./gradlew :shared:testDebugUnitTest :composeApp:testDebugUnitTest
+
+  ios:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+      - name: Run iOS simulator tests
+        run: ./gradlew :shared:iosSimulatorArm64Test

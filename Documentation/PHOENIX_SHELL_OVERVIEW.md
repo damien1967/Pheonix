@@ -138,6 +138,8 @@ AppState tracks:
 
 AppState persists across sessions. GameState does not — it is created when a session starts and discarded when it ends. The last session's result is extracted from GameState before discard and written into `lastSessionResult` in AppState.
 
+**Where this lives:** AppState and the screen-transition state machine that mutates it are implemented in `commonMain/kotlin/phoenix/shell/`, alongside but separate from the engine's own `engine/`, `board/`, and `piece/` packages — one shared state machine, rendered by Compose and SwiftUI separately. See `CLAUDE.md`'s file structure and `high level implementation plan.md` §3 for the full reasoning and how this compares to the engine's own state machines (`GamePiece` lifecycle, `Cell` state).
+
 ---
 
 ## 6. The Shell–Engine Contract

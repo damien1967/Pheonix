@@ -135,7 +135,8 @@ Use these terms verbatim in all code, comments, and discussion. Do not invent sy
         │   ├── piece/                   ← GamePiece, PieceShape, PieceSource
         │   ├── mechanic/                ← GameMechanic interface, all rule-set interfaces
         │   ├── definition/              ← GameDefinition, loading, validation
-        │   └── modifier/                ← Modifier model, active modifier stack
+        │   ├── modifier/                ← Modifier model, active modifier stack
+        │   └── shell/                   ← AppState, ShellDefinition, screen-transition state machine
         └── commonTest/kotlin/phoenix/   ← mirrors commonMain exactly
 ```
 

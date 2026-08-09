@@ -62,7 +62,17 @@ if [ "$RUN_KT" = true ]; then
     run_stage "Kotlin Tests" ./gradlew :shared:testDebugUnitTest
 fi
 if [ "$RUN_IOS" = true ]; then
-    run_stage "iOS Tests" ./gradlew :shared:iosSimulatorArm64Test
+    # The iOS simulator test task only runs on a host whose CPU architecture
+    # matches the simulator target - Apple Silicon Macs run the arm64
+    # simulator, Intel Macs run the x64 simulator. Kotlin Gradle Plugin
+    # silently disables (SKIPPED, not FAILED) whichever one doesn't match
+    # the current host, regardless of Xcode/Kotlin version.
+    if [ "$(uname -m)" = "arm64" ]; then
+        IOS_TEST_TASK=":shared:iosSimulatorArm64Test"
+    else
+        IOS_TEST_TASK=":shared:iosX64Test"
+    fi
+    run_stage "iOS Tests" ./gradlew "$IOS_TEST_TASK"
 fi
 if [ "$RUN_ANDROID" = true ]; then
     run_stage "Android Tests" ./gradlew :composeApp:testDebugUnitTest

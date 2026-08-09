@@ -95,6 +95,8 @@ Testing is not optional and is not deferred. It is part of building the feature.
 
 **Release gate:** Nothing ships unless the full test suite passes in CI. There are no exceptions and no manual overrides.
 
+**Local vs CI parity:** a test that's silently skipped locally is not a passing test. If a local run reports `SKIPPED` or a vacuous `NO-SOURCE` where CI reports a real pass or fail, that's a red flag, not a green light — confirm what's actually being exercised before trusting the result. (Concrete example: `iosSimulatorArm64Test` silently disables itself on an Intel Mac regardless of Xcode/Kotlin version — see `WAY_OF_WORKING.md` §4.)
+
 **When asked to add a feature:** propose the tests alongside the implementation plan, not after.
 
 ---

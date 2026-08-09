@@ -70,6 +70,8 @@ xcodebuild test -workspace iosApp/iosApp.xcworkspace -scheme iosApp -destination
 
 You do not have to run the iOS suite locally before every commit — CI does it for you (§6). Run it locally when you're actively changing `iosMain` or SwiftUI code and want fast feedback.
 
+**Local vs CI parity — a real gotcha we hit:** `./gradlew :shared:iosSimulatorArm64Test` silently reports `SKIPPED` (not failed — a vacuous pass) on an Intel Mac, regardless of Xcode or Kotlin version, because the Kotlin Gradle Plugin disables that task outright on any host whose CPU doesn't match the arm64 simulator target. `run_tests.sh` handles this automatically (it detects host architecture and runs `iosX64Test` on Intel, `iosSimulatorArm64Test` on Apple Silicon), but if you ever call the Gradle task directly, don't mistake a `SKIPPED` result for a `PASSED` one — check what actually ran before trusting it. GitHub's `macos-latest` CI runners are Apple Silicon, so this doesn't affect CI.
+
 ## 5. Commit
 
 - One logical change per commit. Branch per feature: `feature/<short-name>`.
@@ -202,3 +204,4 @@ A change is done when:
 - [ ] No architecture rule from `CLAUDE.md` was bent to make it work — or it was raised and agreed first
 - [ ] PR is open against `main`, both CI jobs (`jvm-and-android`, `ios`) are green
 - [ ] Commit messages explain why, not just what
+- [ ] The corresponding GitHub issue (or sub-issue, see `PLANNING.md`) is only closed **after** the commit is pushed and CI confirms it — a closed ticket for uncommitted or unverified work is a lie the tracker will believe

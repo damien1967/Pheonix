@@ -7,11 +7,28 @@ data class GameBoard(
 ) {
 
     fun cellAt(position: BoardPosition): Cell {
-        TODO("Not yet implemented — see issue #1")
+        requireInBounds(position)
+        return cells[position.row][position.column]
     }
 
     fun withCell(position: BoardPosition, newState: CellState): GameBoard {
-        TODO("Not yet implemented — see issue #1")
+        requireInBounds(position)
+        val updatedCells = cells.mapIndexed { rowIndex, row ->
+            if (rowIndex != position.row) {
+                row
+            } else {
+                row.mapIndexed { columnIndex, cell ->
+                    if (columnIndex != position.column) cell else Cell(state = newState)
+                }
+            }
+        }
+        return copy(cells = updatedCells)
+    }
+
+    private fun requireInBounds(position: BoardPosition) {
+        require(position.row in 0 until rowCount && position.column in 0 until columnCount) {
+            "Position $position is out of bounds for a ${rowCount}x${columnCount} board"
+        }
     }
 
     companion object {
@@ -20,7 +37,18 @@ data class GameBoard(
             columnCount: Int,
             blockedPositions: List<BoardPosition> = emptyList()
         ): GameBoard {
-            TODO("Not yet implemented — see issue #1")
+            val blockedPositionSet = blockedPositions.toSet()
+            val cells = (0 until rowCount).map { row ->
+                (0 until columnCount).map { column ->
+                    val state = if (BoardPosition(row, column) in blockedPositionSet) {
+                        CellState.BLOCKED
+                    } else {
+                        CellState.EMPTY
+                    }
+                    Cell(state = state)
+                }
+            }
+            return GameBoard(rowCount = rowCount, columnCount = columnCount, cells = cells)
         }
     }
 }

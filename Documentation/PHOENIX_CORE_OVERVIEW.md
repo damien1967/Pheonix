@@ -1,5 +1,5 @@
 # Phoenix Core — Engine Implementation Overview
-> v0.1 Draft · 2026-07-11 · Internal
+> v0.2 Draft · 2026-08-08 · Internal
 
 ## What Phoenix Is
 
@@ -28,7 +28,9 @@ The board and pieces are structurally stable across the entire catalog. The **me
 | `ScoringRule` | Converts resolved actions into score, including combo/chain multipliers. |
 | `RewardRule` | Converts score/milestones into player-facing value — currency, unlocks, streak bonuses. |
 | `GenerationRule` | Decides which piece is supplied next, plus the PieceSource's slot count and refill policy. |
-| `Modifier` | A temporary, possibly stackable adjustment to one or more mechanic rule parameters — a power-up. |
+| `Modifier` | A temporary, possibly stackable adjustment to one or more mechanic rule parameters (e.g. a score multiplier active for N placements). |
+| `PowerUp` | A discrete player-deployed action — Undo, Piece Swap, Line Bomb, etc. Some power-ups are implemented as Modifiers internally (Score Multiplier); others directly mutate the board or tray. |
+| `DropEvent` | An event emitted by the engine at steps 4 or 5 when a trigger condition is met, signalling that the Shell should award the player a power-up token. The engine does not manage inventories — it only emits the event. |
 | `GameDefinition` | The authored config (board config + piece set + mechanic module) that instantiates one shippable game. |
 
 ---
@@ -42,8 +44,8 @@ Every player action passes through the same **six-step loop**, regardless of whi
 | 1 | **Input** | Player drags a piece from the source and releases it over the board. |
 | 2★ | **Placement Validator** | Checks piece cells against the board using the mechanic's *Placement Rules* (overlap, bounds, blocked cells). Invalid → piece returns to source. |
 | 3 | **Board Mutation** | Valid placement commits: piece cells write into the board grid. Piece transitions from `held` → `placed`. |
-| 4★ | **Interaction Resolver** | The mechanic's *Interaction Rules* scan the mutated board and resolve outcomes — clears, merges, dissolves. This step defines "what game this is." |
-| 5 | **Mechanic Hooks** | Scoring, Progression, and Reward rules run off the resolver's output — points awarded, timers/speed adjusted, rewards granted, win/loss checked. Active Modifiers (§8) apply here, adjusting rule inputs/outputs before they commit. |
+| 4★ | **Interaction Resolver** | The mechanic's *Interaction Rules* scan the mutated board and resolve outcomes — clears, merges, dissolves. This step defines "what game this is." The resolver may also emit `DropEvent`s when interaction outcomes meet defined trigger conditions (e.g. simultaneous multi-line clear → Line Bomb drop). |
+| 5 | **Mechanic Hooks** | Scoring, Progression, and Reward rules run off the resolver's output — points awarded, timers/speed adjusted, rewards granted, win/loss checked. Active Modifiers apply here, adjusting rule inputs/outputs before they commit. The `ScoringRule` and `RewardRule` may also emit `DropEvent`s when score milestones are crossed (e.g. reaching 1000 points in a session → Wildcard drop). |
 | 6★ | **State Broadcast & Replenish** | Board, piece source, and mechanic state changes are emitted. If the source has open slots, the mechanic's *Generation Rule* supplies the next piece(s) before the presentation layer renders the new frame. |
 
 > **Key constraint:** The engine core never hardcodes clear/merge/escape/supply logic. It only calls out to the mechanic module's hook functions at steps 2, 4, and 6. Everything else is shared plumbing.
@@ -98,20 +100,38 @@ A mechanic module is composed of **seven independently swappable rule-sets**. To
 
 ---
 
-## Modifiers — Power-Ups
+## Power-Ups and Modifiers
 
-A `Modifier` is a **temporary, runtime adjustment** to one or more mechanic rule parameters.
+These are related but distinct concepts. Both are mechanic concerns. Neither is a board entity or a piece property.
+
+### Modifiers
+
+A `Modifier` is a **temporary, runtime adjustment** to one or more mechanic rule parameters — active for a duration, then expired.
 
 | Property | Definition |
 |---|---|
-| `trigger` | What grants it — a tagged piece resolving ("power piece"), an Interaction Rule side-effect (special clear pattern), or a Reward Rule payout (score-threshold unlock). |
 | `target` | Which rule parameter(s) it adjusts — e.g. `progression.speedMultiplier`, `scoring.multiplier`, `interaction.autoClear`. |
 | `duration` | Time-boxed, count-boxed (N placements/turns), or session-permanent. |
 | `stacking` | How multiple active modifiers combine: additive, multiplicative, duration-refresh, or mutually exclusive (highest-priority wins). Configured per modifier type, not engine-wide. |
 
-**Example:** A "Slow-Mo" modifier (`progression.speedMultiplier ×0.5`, 10s) and a "Double Points" modifier (`scoring.multiplier ×2`, 8s) stack additively and independently — the board runs slower while every clear scores double.
+**Example:** A Score Multiplier modifier (`scoring.multiplier ×2`, 3 placements) doubles all score for the next three placements then expires automatically.
 
 Modifiers are **optional per `GameDefinition`**. The simplest configuration has none active.
+
+### Power-Ups
+
+A `PowerUp` is a **discrete player-deployed action** drawn from inventory. Some power-ups (e.g. Score Multiplier) are implemented internally as Modifiers. Others act directly on the board or tray (e.g. Line Bomb, Piece Swap) without going through the Modifier system.
+
+Power-ups are awarded to the player in two ways:
+
+- **In-game drop** — the engine emits a `DropEvent` at steps 4 or 5 when a mechanic-defined trigger condition is met. The Shell converts this into a session-inventory token flagged `IN_GAME`. The engine does not manage inventories.
+- **Booster Pack purchase** — the player buys a pack via the Shell's store. Tokens are added to persistent inventory flagged `PURCHASED`.
+
+The source flag (`IN_GAME` vs `PURCHASED`) determines augmentation status when the token is deployed. The power-up's effect on the board and score is identical regardless of source. Full scoring rules — including multi-line clear bonuses — apply to any board state produced by a power-up, exactly as they would to any naturally produced state.
+
+Each `GameDefinition` defines its own drop trigger table — which power-ups can drop and under what conditions. Power-up inventories are scoped per `GameDefinition`; tokens do not transfer between games.
+
+See `PHOENIX_REWARDS_AND_AUGMENTATION.md` for the full power-up catalogue, drop trigger table, augmentation rules, and badge system.
 
 ---
 
@@ -132,6 +152,15 @@ GameDefinition {
     winLoss:     "boardFullIsLoss"
     generation:  { policy: "randomBag", traySize: 3, refill: "whenEmpty_batch" }
     modifiers:   []  // optional — omit entirely for simplest config
+    drops: [
+      { trigger: "lineCleared",             powerUp: "PieceSwap"      },
+      { trigger: "scoreMilestone(500)",      powerUp: "Wildcard"       },
+      { trigger: "simultaneousClears(2)",    powerUp: "ScoreMultiplier"},
+      { trigger: "simultaneousClears(3)",    powerUp: "CellEraser"     },
+      { trigger: "simultaneousClears(3)",    powerUp: "TrayRefresh"    },
+      { trigger: "simultaneousClears(4)",    powerUp: "LineBomb"       },
+      { trigger: "personalBestInSession",    powerUp: "Undo"           }
+    ]
   }
   theme:    { skin: "ref://presentation-skins/example" }  // out of engine scope
 }
@@ -157,6 +186,7 @@ The simplest possible `GameDefinition`, proving the engine reproduces a known ge
 | Reward | Score thresholds unlock cosmetic piece skins |
 | Win / Loss | Loss when no piece in the tray can be legally placed anywhere on the board. No win condition — endless high-score loop. |
 | Modifiers | None |
+| Drops | Piece Swap on any line clear; Wildcard at score milestones; Score Multiplier on 2-line simultaneous clear; Cell Eraser and Tray Refresh on 3-line; Line Bomb on 4-line; Undo on in-session personal best |
 
 Every row maps directly onto a rule-set slot from §7 and a field from the §9 config. No change to the engine's board model, piece model, or core loop was required.
 

@@ -1,6 +1,6 @@
 # GeoScoreboard System Specification
 
-**Version:** 1.1  
+**Version:** 1.2  
 **Status:** Draft  
 **Audience:** Game engine integrators, backend platform engineers  
 
@@ -149,16 +149,18 @@ Score Submission Request
   - Score Value
   - Session Token (anti-cheat)
   - Location Signal (if Tier ≥ 4: precise; else: inferred)
+  - Augmentation Status (PURE | AUGMENTED)
     │
     ▼
 Score Ingestion Service
   ├── Validate session token
   ├── Validate score within plausible range (game-configured bounds)
   ├── Resolve location to geographic labels at all consented tiers
-  ├── Compare score to player's existing best in each time window
-  │     ├── Update any windows where this score is a new best
-  │     └── Flag All-Time PB if applicable (shown prominently on score screen)
-  └── Emit score event to Ranking Engine (carries window update flags)
+  ├── Read Augmentation Status from submission
+  ├── Compare score to player's existing best in each time window × augmentation track
+  │     ├── Update any windows where this score is a new best (Pure track or Augmented track)
+  │     └── Flag All-Time PB if applicable, per track (shown prominently on score screen)
+  └── Emit score event to Ranking Engine (carries window update flags + augmentation track)
     │
     ▼
 Ranking Engine
@@ -182,7 +184,7 @@ The system is not a full anti-cheat solution but applies basic guards:
 
 ### 6.1 View Types
 
-The system provides two view modes, both available at every geographic level:
+The system provides two view modes and three leaderboard tracks, all available at every geographic level:
 
 **Contextual View (default)**
 Shows the player's own rank with a window of competitors immediately above and below them. Recommended window: 5 above, 5 below. This is the primary view — it gives players named targets to pursue without overwhelming them with irrelevant entries.
@@ -190,14 +192,29 @@ Shows the player's own rank with a window of competitors immediately above and b
 **Top-N View**
 Shows the highest-ranked N players at a given level. Recommended default: top 100. The player's own entry is always appended below the list if they fall outside the top N, so they always see their rank in context.
 
+**Leaderboard Tracks**
+
+Every board at every geographic level maintains three parallel ranking sets:
+
+| Track | Contains | Default |
+|---|---|---|
+| **Pure** | Only sessions submitted with `PURE` status | Yes — shown by default |
+| **Augmented** | Only sessions submitted with `AUGMENTED` status | No |
+| **All** | Both Pure and Augmented, ranked together | No |
+
+The player switches between tracks via a toggle on the leaderboard view. Their own entry always shows their status (`Pure` / `Augmented`) regardless of which track is displayed. A player's personal best is tracked independently per track — a Pure PB and an Augmented PB are separate records.
+
+The Ranking Engine maintains separate sorted sets per (game, geographic-board, time-window, augmentation-track) tuple. This multiplies the ranking set count by 3 but is architecturally straightforward — the same insert and query logic applies to each set independently.
+
 ### 6.2 Score Screen Anatomy
 
 When a player completes a game session and reaches the score screen, the client should present:
 
 ```
-YOUR SCORE: 400
-★ ALL-TIME PERSONAL BEST   Today's best: 400   Week's best: 400   Year's best: 400
+YOUR SCORE: 400  ◆ PURE
+★ ALL-TIME PERSONAL BEST (Pure)   Today's best: 400   Week's best: 400   Year's best: 400
 
+[ Pure ] [ Augmented ] [ All ]    ← track toggle; defaults to Pure
 [ All Time ] [ This Year ] [ This Week ] [ Today ]   ← time window toggle; defaults to All Time
 
 ─────────────────────────────────
@@ -313,7 +330,7 @@ Accepts score submissions. Validates token and score plausibility. Delegates loc
 Serves all read requests: contextual slices, top-N lists, personal bests, rank lookups. Reads from the Ranking Engine. Stateless and horizontally scalable. Applies visibility rules — a player's Display Name is returned only if the requesting player is enrolled at an equal or narrower tier.
 
 **Ranking Engine**  
-The heart of the system. Maintains one sorted ranking set per (game, geographic-board, time-window) tuple — four time windows × N geographic boards per game. Accepts score events carrying window update flags and updates only the windows where the submitted score is a new best. Must support: rank lookup by player, range query by rank position (for slices), and player count per board. O(log N) insert and rank operations are a hard requirement at the scale this system targets. Time-windowed sets (Today, This Week, This Year) are cleared on their respective reset schedules; the All-Time set never resets.
+The heart of the system. Maintains one sorted ranking set per (game, geographic-board, time-window, augmentation-track) tuple — four time windows × three tracks (Pure, Augmented, All) × N geographic boards per game. Accepts score events carrying window update flags and augmentation track, and updates only the windows and tracks where the submitted score is a new best. The `All` track is updated for every submission regardless of augmentation status. Must support: rank lookup by player, range query by rank position (for slices), and player count per board per track. O(log N) insert and rank operations are a hard requirement at the scale this system targets. Time-windowed sets (Today, This Week, This Year) are cleared on their respective reset schedules; the All-Time set never resets.
 
 **Player Record Store**  
 Source of truth for player identity, consent configuration, and personal bests. Writes on: first registration, consent tier change, personal best update. Reads on: every score submission and leaderboard query. Consistency requirement: consent tier reads must reflect the latest committed value before a score event is processed.
@@ -324,14 +341,14 @@ Accepts a location signal (IP + locale for Tiers 1–3; GPS coordinates for Tier
 ### 7.3 Data Flows
 
 **Score Submission (happy path):**
-1. Client sends score + session token + location signal to Gateway.
+1. Client sends score + session token + location signal + augmentation status (`PURE` | `AUGMENTED`) to Gateway.
 2. Gateway authenticates and forwards to Score Ingestion Service.
-3. Ingestion reads player's Consent Tier and existing Personal Best.
+3. Ingestion reads player's Consent Tier and existing Personal Best (per augmentation track).
 4. Ingestion calls Geolocation Service; receives geographic labels.
-5. Ingestion compares new score to Personal Best; updates if higher.
-6. Ingestion emits score event to Ranking Engine for each board the player is enrolled in.
-7. Ranking Engine updates positions; acknowledges event.
-8. Ingestion returns acknowledgement to client with: previous rank (snapshot), personal best flag, and a query token.
+5. Ingestion compares new score to Personal Best on the matching track; updates if higher.
+6. Ingestion emits score event to Ranking Engine for each board the player is enrolled in, carrying the augmentation track.
+7. Ranking Engine updates positions on the matching track's ranking set (Pure or Augmented), and on the All set regardless. Acknowledges event.
+8. Ingestion returns acknowledgement to client with: previous rank on matching track (snapshot), personal best flag for that track, and a query token.
 9. Client polls Leaderboard Query Service with query token; receives full score screen payload when rankings are settled.
 
 **Consent Tier Change:**

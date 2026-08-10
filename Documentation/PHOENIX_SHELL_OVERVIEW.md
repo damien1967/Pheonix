@@ -1,5 +1,5 @@
 # Phoenix — Shell Specification
-> v0.1 Draft · 2026-08-08 · Internal
+> v0.2 Draft · 2026-08-08 · Internal
 
 ---
 
@@ -63,6 +63,10 @@ The cleanest way to understand what belongs where:
 | Which game to launch next | Shell | App flow decision |
 | Win/loss condition | Game Engine (`WinLossRule`) | Mechanic concern |
 | What screen to show on loss | Shell | Navigation concern |
+| Whether a drop condition was met | Game Engine | Mechanic trigger logic |
+| Converting a drop event into a power-up token | Shell | Inventory management |
+| Tracking whether a session is Pure or Augmented | Shell | App-level concern, not game logic |
+| Routing scores to correct leaderboard | Shell | App-level, via GeoScoreboard flag |
 
 **The rule:** if it requires knowledge of game rules to make the decision, it belongs in the engine. If it requires knowledge of where the user is in the app, it belongs in the Shell.
 
@@ -132,11 +136,14 @@ AppState tracks:
 |---|---|
 | `currentScreen` | Which Shell screen is active, or `InGame` if the engine is running |
 | `activeGameDefinition` | Which `GameDefinition` is loaded, if any |
-| `lastSessionResult` | Score, outcome, and rewards from the most recent session |
-| `playerProgress` | Cumulative data: total sessions played, unlocks earned, leaderboard positions |
+| `lastSessionResult` | Score, outcome, augmentation status, and rewards from the most recent session |
+| `playerProgress` | Cumulative data: total sessions played, badges earned, leaderboard positions |
 | `settingsState` | User preferences (audio, notifications, etc.) |
+| `persistentInventory` | Per-game power-up tokens sourced from Booster Pack purchases (`PURCHASED`) |
+| `sessionInventory` | Per-session power-up tokens earned via in-game drops (`IN_GAME`) — discarded at session end |
+| `augmentationStatus` | Whether the current session is Pure or Augmented; set the moment a `PURCHASED` token is deployed |
 
-AppState persists across sessions. GameState does not — it is created when a session starts and discarded when it ends. The last session's result is extracted from GameState before discard and written into `lastSessionResult` in AppState.
+AppState persists across sessions. GameState does not — it is created when a session starts and discarded when it ends. The last session's result is extracted from GameState before discard and written into `lastSessionResult` in AppState. The `sessionInventory` is also discarded at session end; `persistentInventory` survives.
 
 **Where this lives:** AppState and the screen-transition state machine that mutates it are implemented in `commonMain/kotlin/phoenix/shell/`, alongside but separate from the engine's own `engine/`, `board/`, and `piece/` packages — one shared state machine, rendered by Compose and SwiftUI separately. See `CLAUDE.md`'s file structure and `high level implementation plan.md` §3 for the full reasoning and how this compares to the engine's own state machines (`GamePiece` lifecycle, `Cell` state).
 
@@ -152,13 +159,18 @@ Shell calls:
 
 Engine emits during session:
   onStateChanged(gameState: GameState)        // Shell ignores this; presentation layer consumes it
+  onDropEvent(drop: DropEvent)               // Shell converts to PowerUpToken, adds to sessionInventory
   onSessionEnded(result: SessionResult)       // Shell consumes this; navigates to Score Screen
 
 Shell calls on session end:
   engine.teardown()
 ```
 
-`SessionResult` carries everything the Shell needs: final score, win/loss flag, rewards triggered, and whether a personal best was achieved. The Shell never inspects internal GameState directly.
+`SessionResult` carries everything the Shell needs: final score, win/loss flag, rewards triggered, whether a personal best was achieved, and the session's `augmentationStatus`. The Shell uses the augmentation flag when submitting to GeoScoreboard — Pure sessions route to the Pure leaderboard; Augmented sessions route to the Augmented leaderboard.
+
+`DropEvent` carries the `PowerUpType` that has been earned. The Shell's drop handler creates a `PowerUpToken` with source `IN_GAME` and adds it to the `sessionInventory`. The engine does not know what inventory is, what source means, or that augmentation exists. It emits an event; the Shell handles the rest.
+
+The Shell never inspects internal GameState directly.
 
 ---
 
@@ -200,8 +212,9 @@ A `ShellDefinition` is authored alongside its `GameDefinition`. They are shipped
 
 | Document | Relationship |
 |---|---|
-| `PHOENIX_CORE_OVERVIEW.md` | The engine the Shell wraps. The Shell calls into it; the engine does not call back into the Shell. |
-| `GeoScoreboard_System_Specification.md` | An external service the Score Screen (§4.3) integrates with. The Shell holds the integration point; GeoScoreboard is out of engine scope. |
+| `PHOENIX_CORE_OVERVIEW.md` | The engine the Shell wraps. The Shell calls into it; the engine does not call back into the Shell. Defines `DropEvent`, `PowerUp`, and the drop trigger table concept. |
+| `PHOENIX_REWARDS_AND_AUGMENTATION.md` | Defines the full power-up catalogue, drop trigger tables, Booster Pack model, badge system, and Pure/Augmented rules. The Shell implements inventory management, augmentation tracking, and badge evaluation based on this spec. |
+| `GeoScoreboard_System_Specification.md` | An external service the Score Screen (§4.3) integrates with. The Shell submits scores with augmentation flag; GeoScoreboard routes to the correct leaderboard. |
 | `CLAUDE.md` | Architecture rules apply here too: structural entities carry no logic, configuration over code, presentation is separate. |
 
 ---

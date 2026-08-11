@@ -1,5 +1,5 @@
 # Phoenix Core — Engine Implementation Overview
-> v0.2 Draft · 2026-08-08 · Internal
+> v0.3 Draft · 2026-08-11 · Internal
 
 ## What Phoenix Is
 
@@ -17,8 +17,12 @@ The board and pieces are structurally stable across the entire catalog. The **me
 
 | Term | Definition |
 |---|---|
-| `GameBoard` | The grid the player plays on. Owns cell state; agnostic to grid shape. |
-| `Cell` | One addressable board location. Holds occupancy plus optional tags (color, type, blocked). |
+| `GameBoard` | The play surface for one session. Owns the set of cells defined by the current `LevelConfig`. Agnostic to shape, dimensions, and zone logic. |
+| `Cell` | One addressable board location within the `GridShape`. Holds occupancy plus optional tags (color, type, blocked). |
+| `GridShape` | Defines which cells exist on the board. Either `Rectangular(width, height)` — the default — or `CellSet(coordinates)` for irregular shapes (hex outline, L-shape, etc.). Cells outside the `GridShape` are absent; they are not blocked, they simply do not exist. |
+| `Zone` | A named sub-region of cells within the board. Defined in `LevelConfig`; used exclusively by the `InteractionRule` for zone-based clear conditions (e.g. a Woodoku-style 3×3 square that clears when full). The board stores zones as metadata but does not interpret them. |
+| `LevelConfig` | The complete board configuration for one session: a `GridShape`, a set of `blockedCells`, and an optional list of `Zone`s. Supplied by the `ProgressionRule` at session start. |
+| `LevelSequence` | An authored, ordered list of `LevelConfig`s within a `GameDefinition`, used by staged games. The `ProgressionRule` advances through the sequence as the player completes each level. Endless games use a single `LevelConfig` or a `LevelGenerator` instead. |
 | `GamePiece` | A placeable object made of one or more cells in a shape. Carries its own state: position, rotation, tags, lifecycle. |
 | `PieceShape` | The cell-offset template a piece is stamped from. |
 | `PieceSource` | The runtime slot container offering pieces to the player — tray, queue, or deck. Structural only; fill logic belongs to the mechanic's Generation Rule. |
@@ -54,16 +58,55 @@ Every player action passes through the same **six-step loop**, regardless of whi
 
 ## Game Board
 
-The board is a grid of addressable cells. Grid dimensions and shape (square, hex) are set per `GameDefinition`; the engine is agnostic to both.
+The board is the play surface for a single session. It is initialised from a `LevelConfig` at session start and does not change during the session. The engine is agnostic to shape, dimensions, and any zone logic.
+
+### GridShape
+
+A `GridShape` defines which cell coordinates exist on the board. Two concrete types:
+
+| Type | Usage |
+|---|---|
+| `Rectangular(width, height)` | All cells in the W×H rectangle are valid. The default for most games. |
+| `CellSet(coordinates)` | An explicit list of (row, col) coordinates. Used for irregular shapes — a hex outline, an L-shape, an octagon approximated on a square grid, etc. |
+
+**Absent cells vs blocked cells** — this distinction is important:
+
+- **Absent** — a coordinate outside the `GridShape`. Does not exist in board state. The engine, `PlacementRule`, and `InteractionRule` never see it.
+- **Blocked** — a coordinate inside the `GridShape` but marked as an obstacle. Exists in board state; visible to the `InteractionRule`; can be rendered. Never placeable. Whether blocked cells count toward a line-fill condition is an `InteractionRule` decision, not a board decision.
+
+A `PieceShape`'s offsets are validated against existing cells. Any placement that would require a cell outside the `GridShape` is unconditionally invalid — the `PlacementRule` is not consulted for absent cells.
 
 ### Cell States
 
 | State | Meaning |
 |---|---|
-| `empty` | Unoccupied, placeable |
+| `empty` | Exists within `GridShape`; unoccupied and placeable |
 | `occupied` | Holds a resolved piece's cell |
-| `blocked` | Obstacle, never placeable |
+| `blocked` | Exists within `GridShape`; obstacle, never placeable |
 | `marked` | Transient placement preview |
+
+### Zones
+
+A `Zone` is a named collection of cell coordinates within the board, defined in `LevelConfig`. Zones are a mechanic concept — the board stores them as metadata but draws no conclusions from them. The `InteractionRule` reads zones and decides what "zone complete" means and what happens when a zone is filled.
+
+Zones may overlap. Whether overlapping zones clear independently or together is an `InteractionRule` decision.
+
+**Example — Woodoku-style 9×9:**  
+Nine zones, each a 3×3 sub-grid. The `InteractionRule` clears any zone whose nine cells are all occupied, in addition to any fully-occupied rows or columns.
+
+### LevelConfig
+
+Every session is initialised from a `LevelConfig`:
+
+```
+LevelConfig {
+  shape:        GridShape            // which cells exist
+  blockedCells: [(row, col), ...]    // static obstacles within the shape
+  zones:        [Zone, ...]          // named sub-regions; empty list if unused
+}
+```
+
+For staged games, the `GameDefinition` contains a `LevelSequence` — an ordered list of `LevelConfig`s. The `ProgressionRule` advances through the sequence as the player completes each level. For endless games, a single `LevelConfig` (or a `LevelGenerator` that produces configs procedurally) applies to every session.
 
 ---
 
@@ -90,7 +133,7 @@ A mechanic module is composed of **seven independently swappable rule-sets**. To
 |---|---|
 | `Placement` | What makes a placement legal — overlap, board edges, blocked cells, special zone requirements. |
 | `Interaction` | What happens once a placement resolves — clear full lines, merge matching tiles, dissolve enclosed shapes. The primary axis of difference between games. |
-| `Progression` | Pacing — turn-based vs. real-time, timers, speed/difficulty curve, session length. |
+| `Progression` | Pacing within a session (turn-based vs. real-time, timers, speed/difficulty curve) AND level sequencing between sessions. For staged games, supplies the `LevelConfig` for each session and signals to the Shell whether the completed session was a level clear, a game over, or the final level. |
 | `Scoring` | How interactions convert to points; combo and chain multipliers. |
 | `Reward` | How score and milestones convert to player-facing value — currency, unlocks, streak bonuses, meta-progression. |
 | `Win / Loss` | Terminal conditions — board-full loss, target-score win, or endless (no terminal state). |
@@ -141,17 +184,32 @@ A new game is *authored*, not engineered. A `GameDefinition` is a config bundle 
 
 ```js
 GameDefinition {
-  board:    { grid: "8x8", blockedCells: [] }
+
+  // For an endless game: one LevelConfig used for every session.
+  // For a staged game: an ordered LevelSequence; ProgressionRule advances through it.
+  levels: [
+    LevelConfig {
+      shape:        Rectangular(8, 8)
+      blockedCells: []
+      zones:        []
+    }
+    // Additional LevelConfigs here for staged games, e.g.:
+    // LevelConfig { shape: Rectangular(8,8), blockedCells: [(3,3),(4,4)], zones: [] }
+    // LevelConfig { shape: CellSet([...hexOutlineCoords]), blockedCells: [], zones: [] }
+  ]
+
   pieces:   { shapes: [...polyominoSet] }
+
   mechanic: {
     placement:   "noOverlap"
     interaction: "clearFullLines"
-    progression: "turnBased_noTimer"
+    progression: { type: "turnBased_noTimer", levelMode: "endless" }
+                 // levelMode: "endless" | "staged" | "generated"
     scoring:     "cellsPlaced + linesCleared*100 * comboMultiplier"
     reward:      "currencyPerClear"
     winLoss:     "boardFullIsLoss"
     generation:  { policy: "randomBag", traySize: 3, refill: "whenEmpty_batch" }
-    modifiers:   []  // optional — omit entirely for simplest config
+    modifiers:   []
     drops: [
       { trigger: "lineCleared",             powerUp: "PieceSwap"      },
       { trigger: "scoreMilestone(500)",      powerUp: "Wildcard"       },
@@ -162,6 +220,7 @@ GameDefinition {
       { trigger: "personalBestInSession",    powerUp: "Undo"           }
     ]
   }
+
   theme:    { skin: "ref://presentation-skins/example" }  // out of engine scope
 }
 ```
@@ -174,21 +233,24 @@ GameDefinition {
 
 The simplest possible `GameDefinition`, proving the engine reproduces a known genre through configuration alone (no engine changes).
 
-| Rule-set | Configuration |
+| Concern | Configuration |
 |---|---|
-| Board | 8×8, no blocked cells |
+| Level sequence | Single `LevelConfig`; `levelMode: "endless"` — one session definition used indefinitely |
+| Grid shape | `Rectangular(8, 8)` |
+| Blocked cells | None |
+| Zones | None |
 | Pieces | Fixed library of small polyomino shapes (3–5 cells) |
 | Generation | Random-bag draw from shape library; 3-slot tray; batch refill only once all three slots are empty |
-| Placement | Piece cells must map onto empty cells only; piece must fit entirely on the board |
-| Interaction | Any row or column that becomes fully occupied clears (empties). Simultaneous multi-line clears resolve together. |
-| Progression | Turn-based, no timer, no speed curve |
+| Placement | Piece cells must map onto empty cells only; piece must fit entirely within the `GridShape` |
+| Interaction | Any row or column that becomes fully occupied clears (empties). Simultaneous multi-line clears resolve together. No zone logic. |
+| Progression | Turn-based, no timer, no speed curve, endless (no level advancement) |
 | Scoring | Points per cell placed + bonus per line cleared + multiplier for simultaneous multi-line clears |
 | Reward | Score thresholds unlock cosmetic piece skins |
 | Win / Loss | Loss when no piece in the tray can be legally placed anywhere on the board. No win condition — endless high-score loop. |
 | Modifiers | None |
 | Drops | Piece Swap on any line clear; Wildcard at score milestones; Score Multiplier on 2-line simultaneous clear; Cell Eraser and Tray Refresh on 3-line; Line Bomb on 4-line; Undo on in-session personal best |
 
-Every row maps directly onto a rule-set slot from §7 and a field from the §9 config. No change to the engine's board model, piece model, or core loop was required.
+Every row maps directly onto a rule-set slot, a `LevelConfig` field, or a `GameDefinition` config field. No change to the engine's board model, piece model, or core loop was required.
 
 ---
 

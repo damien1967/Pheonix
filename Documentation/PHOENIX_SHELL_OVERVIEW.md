@@ -1,5 +1,5 @@
 # Phoenix — Shell Specification
-> v0.2 Draft · 2026-08-08 · Internal
+> v0.3 Draft · 2026-08-11 · Internal
 
 ---
 
@@ -97,11 +97,21 @@ The permanent structural screens the user returns to between sessions.
 ### 4.3 Session Boundary Screens
 Screens that appear at the edges of a game session — just before it starts and immediately after it ends.
 
+A session maps to one level. `SessionResult.levelOutcome` tells the Shell which screen to show:
+
+| `levelOutcome` | Meaning | Shell action |
+|---|---|---|
+| `LEVEL_CLEARED` | Player met the win condition for this level | Show Level Clear screen → advance to next level |
+| `GAME_OVER` | Player failed (loss condition) | Show Game Over screen → offer retry or exit |
+| `FINAL_LEVEL_CLEARED` | Last level in a `LevelSequence` completed | Show Completion screen → score summary → home |
+| `ENDLESS_ENDED` | Endless game loss (no win condition) | Show Score Screen directly |
+
 | Screen | Purpose |
 |---|---|
-| Pre-Game | Countdown, "ready?" confirmation, or difficulty reminder. Optional — some `GameDefinition`s skip it. |
-| Score Screen | Post-session summary: score, personal best, leaderboard position, reward earned. This is the primary result screen. |
-| Game Over | Terminal state reached during a session (time expired, board full, etc.) before the score summary is calculated. Optional — some mechanics go directly to Score Screen. |
+| Pre-Game | Countdown, "ready?" confirmation, or level objective reminder. Optional — some `GameDefinition`s skip it. |
+| Level Clear | Shown when `levelOutcome = LEVEL_CLEARED`. Celebratory moment before advancing. Distinct from Score Screen — no leaderboard here. |
+| Score Screen | Post-session summary: score, personal best, leaderboard position, reward earned. Shown after `ENDLESS_ENDED` or `FINAL_LEVEL_CLEARED`. |
+| Game Over | Shown when `levelOutcome = GAME_OVER`. Offers retry (restart same level) or quit to home. |
 
 ### 4.4 Interstitial Screens
 Screens that interrupt the main navigation flow at defined moments. All interstitials are optional and configurable per `GameDefinition`.
@@ -166,7 +176,7 @@ Shell calls on session end:
   engine.teardown()
 ```
 
-`SessionResult` carries everything the Shell needs: final score, win/loss flag, rewards triggered, whether a personal best was achieved, and the session's `augmentationStatus`. The Shell uses the augmentation flag when submitting to GeoScoreboard — Pure sessions route to the Pure leaderboard; Augmented sessions route to the Augmented leaderboard.
+`SessionResult` carries everything the Shell needs: final score, `levelOutcome`, the `LevelConfig` for the next session (if `LEVEL_CLEARED`), rewards triggered, whether a personal best was achieved, and the session's `augmentationStatus`. The Shell uses `levelOutcome` to navigate to the correct post-session screen, and uses the augmentation flag when submitting to GeoScoreboard — Pure sessions route to the Pure leaderboard; Augmented sessions route to the Augmented leaderboard.
 
 `DropEvent` carries the `PowerUpType` that has been earned. The Shell's drop handler creates a `PowerUpToken` with source `IN_GAME` and adds it to the `sessionInventory`. The engine does not know what inventory is, what source means, or that augmentation exists. It emits an event; the Shell handles the rest.
 

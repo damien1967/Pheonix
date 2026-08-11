@@ -71,7 +71,13 @@ It is a slot container. Generation policy, tray size, and refill behaviour are a
 **5. Modifiers are a mechanic concern.**
 Power-ups and temporary rule adjustments live in the mechanic module. They are not a board entity or a piece property.
 
-**6. Presentation is outside the engine contract.**
+**6. Grid shape and level configuration are config, not code.**
+A non-rectangular grid, a grid with blocked cells, a grid with zones, or a sequence of levels with different grids are all expressed as `LevelConfig` data inside the `GameDefinition`. No engine code changes. The `GameBoard` does not know what shape it is; the `InteractionRule` does not know what level it is on. Shape and level sequencing are `ProgressionRule` and `LevelConfig` concerns.
+
+**7. A session maps to one level. The board does not change mid-session.**
+The `GameBoard` is initialised from a `LevelConfig` at session start and is fixed for the duration of that session. All between-level variation (different grid shapes, new blocked cells, harder configurations) is expressed by supplying a different `LevelConfig` for the next session, not by mutating a running board.
+
+**8. Presentation is outside the engine contract.**
 The engine emits state. The presentation layer consumes it. Theming, VFX, animation, and audio are a separate pipeline. Do not design engine interfaces around presentation needs.
 
 ---

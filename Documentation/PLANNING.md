@@ -34,6 +34,8 @@ GitHub doesn't have a first-class "blocked by" field usable from the CLI, so thi
 
 This is a manual convention — nothing enforces it automatically. Keep it accurate by hand.
 
+**When closing a ticket:** check every other open ticket whose `Blocked by:` line names it, and remove the `blocked` label from any of those whose *other* blockers are also all closed. A ticket with two blockers only unblocks once both are gone — closing one blocker doesn't mean removing the label yet if another is still open. Do this before moving on to the next ticket, not as a separate cleanup pass later — a stale `blocked` label makes `gh issue list --search "-label:blocked"` (the "what's next" query) lie.
+
 ---
 
 ## Sub-issues

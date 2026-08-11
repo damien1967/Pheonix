@@ -205,3 +205,4 @@ A change is done when:
 - [ ] PR is open against `main`, both CI jobs (`jvm-and-android`, `ios`) are green
 - [ ] Commit messages explain why, not just what
 - [ ] The corresponding GitHub issue (or sub-issue, see `PLANNING.md`) is only closed **after** the commit is pushed and CI confirms it — a closed ticket for uncommitted or unverified work is a lie the tracker will believe
+- [ ] Any other ticket that listed this one as a blocker has its `blocked` label removed, if all of *its* other blockers are also closed (see `PLANNING.md` Dependencies)

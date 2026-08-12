@@ -3,6 +3,7 @@ package phoenix.mechanic.gridfillclear
 import phoenix.board.BoardPosition
 import phoenix.board.CellState
 import phoenix.board.GameBoard
+import phoenix.board.GridShape
 import phoenix.piece.CellOffset
 import phoenix.piece.GamePiece
 import phoenix.piece.PieceLifecycleState
@@ -27,13 +28,13 @@ class GridFillClearPlacementRuleTest {
 
     @Test
     fun given_emptyBoardAndValidOrigin_when_validated_then_placementValid() {
-        val board = GameBoard.create(rowCount = 3, columnCount = 3)
+        val board = GameBoard.create(shape = GridShape.Rectangular(width = 3, height = 3))
         assertTrue(rule.isLegalPlacement(board, singleCellPiece, BoardPosition(row = 1, column = 1)))
     }
 
     @Test
     fun given_overlapWithOccupiedCell_when_validated_then_placementInvalid() {
-        val board = GameBoard.create(rowCount = 3, columnCount = 3)
+        val board = GameBoard.create(shape = GridShape.Rectangular(width = 3, height = 3))
             .withCell(BoardPosition(row = 1, column = 1), CellState.OCCUPIED)
         assertFalse(rule.isLegalPlacement(board, singleCellPiece, BoardPosition(row = 1, column = 1)))
     }
@@ -41,8 +42,7 @@ class GridFillClearPlacementRuleTest {
     @Test
     fun given_overlapWithBlockedCell_when_validated_then_placementInvalid() {
         val board = GameBoard.create(
-            rowCount = 3,
-            columnCount = 3,
+            shape = GridShape.Rectangular(width = 3, height = 3),
             blockedPositions = listOf(BoardPosition(row = 1, column = 1))
         )
         assertFalse(rule.isLegalPlacement(board, singleCellPiece, BoardPosition(row = 1, column = 1)))
@@ -50,13 +50,13 @@ class GridFillClearPlacementRuleTest {
 
     @Test
     fun given_pieceOffBoardEdge_when_validated_then_placementInvalid() {
-        val board = GameBoard.create(rowCount = 3, columnCount = 3)
+        val board = GameBoard.create(shape = GridShape.Rectangular(width = 3, height = 3))
         assertFalse(rule.isLegalPlacement(board, singleCellPiece, BoardPosition(row = 3, column = 0)))
     }
 
     @Test
     fun given_multiCellPiecePartiallyOffBoard_when_validated_then_placementInvalid() {
-        val board = GameBoard.create(rowCount = 3, columnCount = 3)
+        val board = GameBoard.create(shape = GridShape.Rectangular(width = 3, height = 3))
         assertFalse(rule.isLegalPlacement(board, twoCellHorizontalPiece, BoardPosition(row = 0, column = 2)))
     }
 }

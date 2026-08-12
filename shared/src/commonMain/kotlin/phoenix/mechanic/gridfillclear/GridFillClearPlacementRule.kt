@@ -10,14 +10,8 @@ class GridFillClearPlacementRule : PlacementRule {
 
     override fun isLegalPlacement(board: GameBoard, piece: GamePiece, origin: BoardPosition): Boolean {
         return piece.shape.offsets.all { offset ->
-            val row = origin.row + offset.row
-            val column = origin.column + offset.column
-            isWithinBounds(board, row, column) &&
-                board.cellAt(BoardPosition(row = row, column = column)).state == CellState.EMPTY
+            val position = BoardPosition(row = origin.row + offset.row, column = origin.column + offset.column)
+            board.shape.contains(position) && board.cellAt(position).state == CellState.EMPTY
         }
-    }
-
-    private fun isWithinBounds(board: GameBoard, row: Int, column: Int): Boolean {
-        return row in 0 until board.rowCount && column in 0 until board.columnCount
     }
 }

@@ -2,6 +2,7 @@ package phoenix.definition
 
 import phoenix.board.BoardPosition
 import phoenix.board.GameBoard
+import phoenix.board.GridShape
 import phoenix.mechanic.GameMechanic
 import phoenix.mechanic.GenerationRule
 import phoenix.mechanic.InteractionResult
@@ -84,7 +85,7 @@ class GameDefinitionTest {
     fun given_gameDefinition_when_constructed_then_mechanicRuleSetsAccessible() {
         val gameDefinition = definition()
         assertEquals(SessionOutcome.Ongoing, gameDefinition.mechanic.winLoss.outcome(
-            board = GameBoard.create(rowCount = 1, columnCount = 1),
+            board = GameBoard.create(shape = GridShape.Rectangular(width = 1, height = 1)),
             pieceSource = PieceSource.create(slotCount = 1),
             score = 0
         ))

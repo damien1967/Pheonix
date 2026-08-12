@@ -9,18 +9,16 @@ import phoenix.mechanic.InteractionRule
 class GridFillClearInteractionRule : InteractionRule {
 
     override fun resolve(board: GameBoard): InteractionResult {
-        val fullRows = (0 until board.rowCount).filter { row -> isRowFull(board, row) }
-        val fullColumns = (0 until board.columnCount).filter { column -> isColumnFull(board, column) }
+        val rowIndices = board.shape.positions.map { it.row }.distinct()
+        val columnIndices = board.shape.positions.map { it.column }.distinct()
+
+        val fullRows = rowIndices.filter { row -> isRowFull(board, row) }
+        val fullColumns = columnIndices.filter { column -> isColumnFull(board, column) }
 
         val positionsToClear = mutableSetOf<BoardPosition>()
-        fullRows.forEach { row ->
-            (0 until board.columnCount).forEach { column ->
-                positionsToClear.add(BoardPosition(row = row, column = column))
-            }
-        }
-        fullColumns.forEach { column ->
-            (0 until board.rowCount).forEach { row ->
-                positionsToClear.add(BoardPosition(row = row, column = column))
+        board.shape.positions.forEach { position ->
+            if (position.row in fullRows || position.column in fullColumns) {
+                positionsToClear.add(position)
             }
         }
 
@@ -33,14 +31,14 @@ class GridFillClearInteractionRule : InteractionRule {
     }
 
     private fun isRowFull(board: GameBoard, row: Int): Boolean {
-        return (0 until board.columnCount).all { column ->
-            board.cellAt(BoardPosition(row = row, column = column)).state == CellState.OCCUPIED
+        return board.shape.positions.filter { it.row == row }.all { position ->
+            board.cellAt(position).state == CellState.OCCUPIED
         }
     }
 
     private fun isColumnFull(board: GameBoard, column: Int): Boolean {
-        return (0 until board.rowCount).all { row ->
-            board.cellAt(BoardPosition(row = row, column = column)).state == CellState.OCCUPIED
+        return board.shape.positions.filter { it.column == column }.all { position ->
+            board.cellAt(position).state == CellState.OCCUPIED
         }
     }
 }

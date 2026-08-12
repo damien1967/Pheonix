@@ -3,6 +3,7 @@ package phoenix.mechanic.gridfillclear
 import phoenix.board.BoardPosition
 import phoenix.board.CellState
 import phoenix.board.GameBoard
+import phoenix.board.GridShape
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -11,7 +12,7 @@ class GridFillClearInteractionRuleTest {
     private val rule = GridFillClearInteractionRule()
 
     private fun boardWithOccupied(rowCount: Int, columnCount: Int, occupied: List<BoardPosition>): GameBoard {
-        var board = GameBoard.create(rowCount = rowCount, columnCount = columnCount)
+        var board = GameBoard.create(shape = GridShape.Rectangular(width = columnCount, height = rowCount))
         occupied.forEach { position -> board = board.withCell(position, CellState.OCCUPIED) }
         return board
     }

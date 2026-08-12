@@ -1,54 +1,37 @@
 package phoenix.board
 
 data class GameBoard(
-    val rowCount: Int,
-    val columnCount: Int,
-    private val cells: List<List<Cell>>
+    val shape: GridShape,
+    private val cells: Map<BoardPosition, Cell>
 ) {
 
     fun cellAt(position: BoardPosition): Cell {
-        requireInBounds(position)
-        return cells[position.row][position.column]
+        requireCellExists(position)
+        return cells.getValue(position)
     }
 
     fun withCell(position: BoardPosition, newState: CellState): GameBoard {
-        requireInBounds(position)
-        val updatedCells = cells.mapIndexed { rowIndex, row ->
-            if (rowIndex != position.row) {
-                row
-            } else {
-                row.mapIndexed { columnIndex, cell ->
-                    if (columnIndex != position.column) cell else Cell(state = newState)
-                }
-            }
-        }
-        return copy(cells = updatedCells)
+        requireCellExists(position)
+        return copy(cells = cells + (position to Cell(state = newState)))
     }
 
-    private fun requireInBounds(position: BoardPosition) {
-        require(position.row in 0 until rowCount && position.column in 0 until columnCount) {
-            "Position $position is out of bounds for a ${rowCount}x${columnCount} board"
+    private fun requireCellExists(position: BoardPosition) {
+        require(shape.contains(position)) {
+            "Position $position is absent from this board's GridShape"
         }
     }
 
     companion object {
         fun create(
-            rowCount: Int,
-            columnCount: Int,
+            shape: GridShape,
             blockedPositions: List<BoardPosition> = emptyList()
         ): GameBoard {
             val blockedPositionSet = blockedPositions.toSet()
-            val cells = (0 until rowCount).map { row ->
-                (0 until columnCount).map { column ->
-                    val state = if (BoardPosition(row, column) in blockedPositionSet) {
-                        CellState.BLOCKED
-                    } else {
-                        CellState.EMPTY
-                    }
-                    Cell(state = state)
-                }
+            val cells = shape.positions.associateWith { position ->
+                val state = if (position in blockedPositionSet) CellState.BLOCKED else CellState.EMPTY
+                Cell(state = state)
             }
-            return GameBoard(rowCount = rowCount, columnCount = columnCount, cells = cells)
+            return GameBoard(shape = shape, cells = cells)
         }
     }
 }

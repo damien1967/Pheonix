@@ -2,6 +2,7 @@ package phoenix.mechanic
 
 import phoenix.board.BoardPosition
 import phoenix.board.GameBoard
+import phoenix.board.GridShape
 import phoenix.piece.CellOffset
 import phoenix.piece.GamePiece
 import phoenix.piece.PieceLifecycleState
@@ -44,7 +45,7 @@ class GameMechanicTest {
 
     @Test
     fun given_gameMechanic_when_constructed_then_allSevenRuleSetsAreAccessible() {
-        val board = GameBoard.create(rowCount = 1, columnCount = 1)
+        val board = GameBoard.create(shape = GridShape.Rectangular(width = 1, height = 1))
         val source = PieceSource.create(slotCount = 1)
 
         assertTrue(noOpMechanic.placement.isLegalPlacement(board, samplePiece, BoardPosition(0, 0)))

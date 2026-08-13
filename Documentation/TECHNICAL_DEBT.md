@@ -34,7 +34,7 @@ Issues #1–8 were implemented and shipped against `PHOENIX_CORE_OVERVIEW.md` v0
 
 | Gap | Issue | Priority |
 |---|---|---|
-| `BoardConfig` (rowCount/columnCount/blockedPositions) needs to become `LevelConfig` (`GridShape` + `zones`); `GameDefinition.board` (singular) needs to become `GameDefinition.levels: LevelSequence` — `CLAUDE.md` rule 7 | [#57](https://github.com/damien1967/Pheonix/issues/57) | P1 (depends on #50) |
+| **Done.** `BoardConfig` replaced with `LevelConfig` (`GridShape` + `blockedCells`); `GameDefinition.board` (singular) replaced with `GameDefinition.levels: LevelSequence` — `CLAUDE.md` rule 7. `zones` deferred to #52 (Zone metadata storage doesn't exist yet). Turned out to be a real prerequisite for #53 (ProgressionRule can't supply a `LevelConfig` that doesn't exist) — done first, ahead of the original #50→#53→#54 remediation order below. | [#57](https://github.com/damien1967/Pheonix/issues/57) (closed) | P1 (depended on #50) |
 | No `levelMode` (`endless`/`staged`/`generated`), no `drops` trigger table on `GameDefinition` | [#58](https://github.com/damien1967/Pheonix/issues/58) | P1 |
 | `GameDefinitionValidator` needs new failure modes once the above land (empty level sequence, etc.) | [#59](https://github.com/damien1967/Pheonix/issues/59) | P1 (depends on #57, #58) |
 
@@ -73,10 +73,12 @@ Flagged rather than described as debt, since there's no shipped code yet to drif
 
 The three P0 items are root dependencies — nothing else in this list can be correctly implemented before them:
 
-1. **[#50](https://github.com/damien1967/Pheonix/issues/50)** GridShape — unblocks #51, #57, #60
+1. **[#50](https://github.com/damien1967/Pheonix/issues/50)** GridShape — unblocks #51, #57, #60 (closed)
 2. **[#53](https://github.com/damien1967/Pheonix/issues/53)** ProgressionRule redesign — unblocks #62, and informs #56
 3. **[#54](https://github.com/damien1967/Pheonix/issues/54)** DropEvent type — unblocks #55, #61, #63
 
 Everything else follows from those three. #56 (the `SessionOutcome`/`levelOutcome` open question) is resolved — see above — and its mapping should be implemented as part of #53.
+
+**Correction found while starting #53:** this order didn't catch that #53 ("`ProgressionRule` supplies the next `LevelConfig`") has no type to supply until `LevelConfig`/`LevelSequence` exist — that's #57, not one of the three listed roots. **[#57](https://github.com/damien1967/Pheonix/issues/57) was done first** (closed), ahead of #53, once this was noticed. Worth rechecking the remaining items (#54 onward) for the same kind of unlisted dependency before assuming the order above is complete.
 
 **Per the standing instruction:** this debt is addressed before further Phase 3 ticket work (#9 onward) resumes.

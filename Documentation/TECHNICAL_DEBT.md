@@ -25,7 +25,7 @@ Issues #1–8 were implemented and shipped against `PHOENIX_CORE_OVERVIEW.md` v0
 
 | Gap | Issue | Priority |
 |---|---|---|
-| `ProgressionRule` is `speedMultiplierAtTurn()` only — spec now makes it responsible for level sequencing: supplying the next `LevelConfig`, signalling level-clear/game-over/final-level to the Shell | [#53](https://github.com/damien1967/Pheonix/issues/53) | P0 |
+| **Done.** `ProgressionRule` gains `nextLevel()` and `levelOutcome()` alongside `speedMultiplierAtTurn()` — supplies the next `LevelConfig` and signals level-clear/game-over/final-level, implementing the #56 mapping. Required #57 (`LevelConfig`/`LevelSequence`) as a prerequisite, done first once noticed. Unblocks #9/#62. | [#53](https://github.com/damien1967/Pheonix/issues/53) (closed) | P0 |
 | No `DropEvent` type anywhere in the codebase; `InteractionRule.resolve()` has no way to emit one | [#54](https://github.com/damien1967/Pheonix/issues/54) | P0 |
 | `ScoringRule`/`RewardRule` also need `DropEvent` emission (score-milestone drops, e.g. Wildcard) | [#55](https://github.com/damien1967/Pheonix/issues/55) | P1 (depends on #54) |
 | **Resolved design question:** `SessionOutcome` (`Ongoing`/`Won`/`Lost`) doesn't map onto the Shell spec's four-way `levelOutcome` (`LEVEL_CLEARED`/`GAME_OVER`/`FINAL_LEVEL_CLEARED`/`ENDLESS_ENDED`). Resolved: `ProgressionRule` computes `levelOutcome` by combining `WinLossRule`'s result with level-sequence state (does a next `LevelConfig` exist, is this endless); `WinLossRule` itself is unchanged. See #56 for the full mapping — now a concrete input to #53. | [#56](https://github.com/damien1967/Pheonix/issues/56) (closed) | P1 |
@@ -56,7 +56,7 @@ Flagged rather than described as debt, since there's no shipped code yet to drif
 
 | Ticket | Issue | Priority |
 |---|---|---|
-| #9 (`GridFillClearProgressionRule`) — do not start until `ProgressionRule` is redesigned | [#62](https://github.com/damien1967/Pheonix/issues/62) | P1 (blocked on #53) |
+| **Resolved.** #9 (`GridFillClearProgressionRule`) was blocked pending `ProgressionRule`'s redesign; #53 is done, #9 is unblocked. | [#62](https://github.com/damien1967/Pheonix/issues/62) (closed) | — |
 | #10 (`GridFillClearScoringRule`) — needs milestone-drop emission support before its Wildcard trigger can be implemented | [#63](https://github.com/damien1967/Pheonix/issues/63) | P1 (blocked on #55) |
 
 ### Clean sweep
@@ -74,11 +74,13 @@ Flagged rather than described as debt, since there's no shipped code yet to drif
 The three P0 items are root dependencies — nothing else in this list can be correctly implemented before them:
 
 1. **[#50](https://github.com/damien1967/Pheonix/issues/50)** GridShape — unblocks #51, #57, #60 (closed)
-2. **[#53](https://github.com/damien1967/Pheonix/issues/53)** ProgressionRule redesign — unblocks #62, and informs #56
+2. **[#53](https://github.com/damien1967/Pheonix/issues/53)** ProgressionRule redesign — unblocks #62, and informs #56 (closed)
 3. **[#54](https://github.com/damien1967/Pheonix/issues/54)** DropEvent type — unblocks #55, #61, #63
 
-Everything else follows from those three. #56 (the `SessionOutcome`/`levelOutcome` open question) is resolved — see above — and its mapping should be implemented as part of #53.
+Everything else follows from those three. #56 (the `SessionOutcome`/`levelOutcome` open question) is resolved — see above — and its mapping is implemented as part of #53 (closed).
 
-**Correction found while starting #53:** this order didn't catch that #53 ("`ProgressionRule` supplies the next `LevelConfig`") has no type to supply until `LevelConfig`/`LevelSequence` exist — that's #57, not one of the three listed roots. **[#57](https://github.com/damien1967/Pheonix/issues/57) was done first** (closed), ahead of #53, once this was noticed. Worth rechecking the remaining items (#54 onward) for the same kind of unlisted dependency before assuming the order above is complete.
+**Correction found while starting #53:** this order didn't catch that #53 ("`ProgressionRule` supplies the next `LevelConfig`") had no type to supply until `LevelConfig`/`LevelSequence` existed — that's #57, not one of the three listed roots. **[#57](https://github.com/damien1967/Pheonix/issues/57) was done first** (closed), ahead of #53. Worth rechecking #54 for the same kind of unlisted dependency before assuming the order above is complete.
+
+**Remaining:** only #54 (DropEvent type) of the three original roots is still open.
 
 **Per the standing instruction:** this debt is addressed before further Phase 3 ticket work (#9 onward) resumes.

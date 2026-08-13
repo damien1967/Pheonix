@@ -28,7 +28,7 @@ Issues #1–8 were implemented and shipped against `PHOENIX_CORE_OVERVIEW.md` v0
 | `ProgressionRule` is `speedMultiplierAtTurn()` only — spec now makes it responsible for level sequencing: supplying the next `LevelConfig`, signalling level-clear/game-over/final-level to the Shell | [#53](https://github.com/damien1967/Pheonix/issues/53) | P0 |
 | No `DropEvent` type anywhere in the codebase; `InteractionRule.resolve()` has no way to emit one | [#54](https://github.com/damien1967/Pheonix/issues/54) | P0 |
 | `ScoringRule`/`RewardRule` also need `DropEvent` emission (score-milestone drops, e.g. Wildcard) | [#55](https://github.com/damien1967/Pheonix/issues/55) | P1 (depends on #54) |
-| **Open design question, not just a gap:** `SessionOutcome` (`Ongoing`/`Won`/`Lost`) doesn't map onto the Shell spec's four-way `levelOutcome` (`LEVEL_CLEARED`/`GAME_OVER`/`FINAL_LEVEL_CLEARED`/`ENDLESS_ENDED`). Unresolved: does `WinLossRule` produce `levelOutcome` directly, or does `ProgressionRule` compute it by combining `WinLossRule`'s result with level-sequence state? | [#56](https://github.com/damien1967/Pheonix/issues/56) | P1 |
+| **Resolved design question:** `SessionOutcome` (`Ongoing`/`Won`/`Lost`) doesn't map onto the Shell spec's four-way `levelOutcome` (`LEVEL_CLEARED`/`GAME_OVER`/`FINAL_LEVEL_CLEARED`/`ENDLESS_ENDED`). Resolved: `ProgressionRule` computes `levelOutcome` by combining `WinLossRule`'s result with level-sequence state (does a next `LevelConfig` exist, is this endless); `WinLossRule` itself is unchanged. See #56 for the full mapping — now a concrete input to #53. | [#56](https://github.com/damien1967/Pheonix/issues/56) (closed) | P1 |
 
 ### #6 — GameDefinition and validation (shipped, needs rework)
 
@@ -77,6 +77,6 @@ The three P0 items are root dependencies — nothing else in this list can be co
 2. **[#53](https://github.com/damien1967/Pheonix/issues/53)** ProgressionRule redesign — unblocks #62, and informs #56
 3. **[#54](https://github.com/damien1967/Pheonix/issues/54)** DropEvent type — unblocks #55, #61, #63
 
-Everything else follows from those three. #56 (the `SessionOutcome`/`levelOutcome` open question) should be resolved as a design discussion before its dependent code is written, not decided unilaterally mid-implementation.
+Everything else follows from those three. #56 (the `SessionOutcome`/`levelOutcome` open question) is resolved — see above — and its mapping should be implemented as part of #53.
 
 **Per the standing instruction:** this debt is addressed before further Phase 3 ticket work (#9 onward) resumes.

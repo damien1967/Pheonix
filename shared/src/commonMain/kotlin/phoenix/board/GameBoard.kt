@@ -2,7 +2,8 @@ package phoenix.board
 
 data class GameBoard(
     val shape: GridShape,
-    private val cells: Map<BoardPosition, Cell>
+    private val cells: Map<BoardPosition, Cell>,
+    val zones: List<Zone> = emptyList()
 ) {
 
     fun cellAt(position: BoardPosition): Cell {
@@ -24,14 +25,15 @@ data class GameBoard(
     companion object {
         fun create(
             shape: GridShape,
-            blockedPositions: List<BoardPosition> = emptyList()
+            blockedPositions: List<BoardPosition> = emptyList(),
+            zones: List<Zone> = emptyList()
         ): GameBoard {
             val blockedPositionSet = blockedPositions.toSet()
             val cells = shape.positions.associateWith { position ->
                 val state = if (position in blockedPositionSet) CellState.BLOCKED else CellState.EMPTY
                 Cell(state = state)
             }
-            return GameBoard(shape = shape, cells = cells)
+            return GameBoard(shape = shape, cells = cells, zones = zones)
         }
     }
 }

@@ -98,4 +98,28 @@ class GameBoardTest {
             board.cellAt(BoardPosition(row = 0, column = 1))
         }
     }
+
+    @Test
+    fun given_boardWithNoZones_when_created_then_zonesListEmpty() {
+        val board = GameBoard.create(shape = GridShape.Rectangular(width = 3, height = 3))
+        assertEquals(emptyList(), board.zones)
+    }
+
+    @Test
+    fun given_boardWithZones_when_created_then_zonesStored() {
+        val zone = Zone(
+            name = "top-left",
+            positions = setOf(BoardPosition(row = 0, column = 0), BoardPosition(row = 0, column = 1))
+        )
+        val board = GameBoard.create(shape = GridShape.Rectangular(width = 3, height = 3), zones = listOf(zone))
+        assertEquals(listOf(zone), board.zones)
+    }
+
+    @Test
+    fun given_boardWithOverlappingZones_when_created_then_bothZonesStored() {
+        val zoneA = Zone(name = "a", positions = setOf(BoardPosition(row = 0, column = 0)))
+        val zoneB = Zone(name = "b", positions = setOf(BoardPosition(row = 0, column = 0)))
+        val board = GameBoard.create(shape = GridShape.Rectangular(width = 3, height = 3), zones = listOf(zoneA, zoneB))
+        assertEquals(listOf(zoneA, zoneB), board.zones)
+    }
 }

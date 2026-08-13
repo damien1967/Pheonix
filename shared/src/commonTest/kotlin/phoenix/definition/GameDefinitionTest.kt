@@ -55,11 +55,10 @@ class GameDefinitionTest {
     }
 
     private fun definition(
-        rowCount: Int = 8,
-        columnCount: Int = 8,
+        levels: LevelSequence = LevelSequence(levels = listOf(LevelConfig(shape = GridShape.Rectangular(width = 8, height = 8)))),
         pieceShapes: List<PieceShape> = listOf(samplePiece.shape)
     ) = GameDefinition(
-        board = BoardConfig(rowCount = rowCount, columnCount = columnCount),
+        levels = levels,
         pieceShapes = pieceShapes,
         mechanic = noOpMechanic
     )
@@ -70,8 +69,8 @@ class GameDefinitionTest {
     }
 
     @Test
-    fun given_boardWithZeroRows_when_validated_then_resultIsInvalid() {
-        val result = GameDefinitionValidator.validate(definition(rowCount = 0))
+    fun given_emptyLevelSequence_when_validated_then_resultIsInvalid() {
+        val result = GameDefinitionValidator.validate(definition(levels = LevelSequence(levels = emptyList())))
         assertTrue(result is ValidationResult.Invalid)
     }
 

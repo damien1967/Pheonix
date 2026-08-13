@@ -4,7 +4,7 @@ import phoenix.mechanic.GameMechanic
 import phoenix.piece.PieceShape
 
 data class GameDefinition(
-    val board: BoardConfig,
+    val levels: LevelSequence,
     val pieceShapes: List<PieceShape>,
     val mechanic: GameMechanic
 )

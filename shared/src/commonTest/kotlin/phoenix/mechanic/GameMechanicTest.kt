@@ -3,6 +3,8 @@ package phoenix.mechanic
 import phoenix.board.BoardPosition
 import phoenix.board.GameBoard
 import phoenix.board.GridShape
+import phoenix.board.LevelConfig
+import phoenix.board.LevelSequence
 import phoenix.piece.CellOffset
 import phoenix.piece.GamePiece
 import phoenix.piece.PieceLifecycleState
@@ -19,6 +21,10 @@ class GameMechanicTest {
         lifecycleState = PieceLifecycleState.InSource
     )
 
+    private val singleLevelSequence = LevelSequence(
+        levels = listOf(LevelConfig(shape = GridShape.Rectangular(width = 1, height = 1)))
+    )
+
     private val noOpMechanic = object : GameMechanic {
         override val placement = object : PlacementRule {
             override fun isLegalPlacement(board: GameBoard, piece: GamePiece, origin: BoardPosition) = true
@@ -28,6 +34,13 @@ class GameMechanicTest {
         }
         override val progression = object : ProgressionRule {
             override fun speedMultiplierAtTurn(turnCount: Int) = 1.0
+            override fun nextLevel(levelSequence: LevelSequence, completedLevelIndex: Int) =
+                levelSequence.levels[completedLevelIndex + 1]
+            override fun levelOutcome(
+                sessionOutcome: SessionOutcome,
+                levelSequence: LevelSequence,
+                completedLevelIndex: Int
+            ) = LevelOutcome.FinalLevelCleared
         }
         override val scoring = object : ScoringRule {
             override fun score(interactionResult: InteractionResult, currentScore: Int) = currentScore
@@ -51,6 +64,10 @@ class GameMechanicTest {
         assertTrue(noOpMechanic.placement.isLegalPlacement(board, samplePiece, BoardPosition(0, 0)))
         assertEquals(0, noOpMechanic.interaction.resolve(board).resolvedCellCount)
         assertEquals(1.0, noOpMechanic.progression.speedMultiplierAtTurn(turnCount = 5))
+        assertEquals(
+            LevelOutcome.FinalLevelCleared,
+            noOpMechanic.progression.levelOutcome(SessionOutcome.Won, singleLevelSequence, completedLevelIndex = 0)
+        )
         assertEquals(10, noOpMechanic.scoring.score(InteractionResult(board, 0), currentScore = 10))
         assertEquals(emptyList(), noOpMechanic.reward.rewardsEarnedAt(score = 100))
         assertEquals(SessionOutcome.Ongoing, noOpMechanic.winLoss.outcome(board, source, score = 0))

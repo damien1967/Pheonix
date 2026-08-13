@@ -3,10 +3,13 @@ package phoenix.definition
 import phoenix.board.BoardPosition
 import phoenix.board.GameBoard
 import phoenix.board.GridShape
+import phoenix.board.LevelConfig
+import phoenix.board.LevelSequence
 import phoenix.mechanic.GameMechanic
 import phoenix.mechanic.GenerationRule
 import phoenix.mechanic.InteractionResult
 import phoenix.mechanic.InteractionRule
+import phoenix.mechanic.LevelOutcome
 import phoenix.mechanic.PlacementRule
 import phoenix.mechanic.ProgressionRule
 import phoenix.mechanic.Reward
@@ -39,6 +42,13 @@ class GameDefinitionTest {
         }
         override val progression = object : ProgressionRule {
             override fun speedMultiplierAtTurn(turnCount: Int) = 1.0
+            override fun nextLevel(levelSequence: LevelSequence, completedLevelIndex: Int) =
+                levelSequence.levels[completedLevelIndex + 1]
+            override fun levelOutcome(
+                sessionOutcome: SessionOutcome,
+                levelSequence: LevelSequence,
+                completedLevelIndex: Int
+            ) = LevelOutcome.FinalLevelCleared
         }
         override val scoring = object : ScoringRule {
             override fun score(interactionResult: InteractionResult, currentScore: Int) = currentScore

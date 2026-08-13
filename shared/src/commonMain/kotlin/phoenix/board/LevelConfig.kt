@@ -1,7 +1,4 @@
-package phoenix.definition
-
-import phoenix.board.BoardPosition
-import phoenix.board.GridShape
+package phoenix.board
 
 data class LevelConfig(
     val shape: GridShape,

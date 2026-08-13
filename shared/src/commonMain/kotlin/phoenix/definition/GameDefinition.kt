@@ -1,5 +1,6 @@
 package phoenix.definition
 
+import phoenix.board.LevelSequence
 import phoenix.mechanic.GameMechanic
 import phoenix.piece.PieceShape
 

@@ -13,13 +13,15 @@ Issues #1–8 were implemented and shipped against `PHOENIX_CORE_OVERVIEW.md` v0
 
 ## Findings by Ticket
 
-### #1 — GameBoard and Cell (shipped, needs rework)
+### #1 — GameBoard and Cell (closed — all rework done)
 
 | Gap | Issue | Priority |
 |---|---|---|
 | `GameBoard` hardcodes `rowCount`/`columnCount`; spec now requires a `GridShape` type (`Rectangular` or `CellSet`) — `CLAUDE.md` rule 6: "the `GameBoard` does not know what shape it is" | [#50](https://github.com/damien1967/Pheonix/issues/50) (closed) | P0 |
 | **Resolved as a side effect of #50, no separate implementation needed.** `GameBoard.create()` only builds `Cell` entries for `shape.positions`; `cellAt()`/`withCell()` already throw for any position outside the shape (already covered by `GameBoardTest.kt`). Blocked cells exist in board state with `CellState.BLOCKED`. Per spec, `absent` was never meant to be a `CellState` value — it's the absence of an entry, which this already is. | [#51](https://github.com/damien1967/Pheonix/issues/51) (closed) | — |
-| No `Zone` metadata storage on `GameBoard` | [#52](https://github.com/damien1967/Pheonix/issues/52) | P1 |
+| **Done.** `GameBoard` gains `zones: List<Zone>`, populated via `GameBoard.create()` — storage only, per rule 2. `LevelConfig` also gains the `zones` field #57 deferred. | [#52](https://github.com/damien1967/Pheonix/issues/52) (closed) | — |
+
+All 11 sub-issues of #1 (original implementation + #50/#51/#52 rework) are closed; #1 itself is closed.
 
 ### #5 — GameMechanic and seven rule-set interfaces (shipped, needs rework)
 

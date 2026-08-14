@@ -40,25 +40,27 @@ All 11 sub-issues of #1 (original implementation + #50/#51/#52 rework) are close
 | No `levelMode` (`endless`/`staged`/`generated`), no `drops` trigger table on `GameDefinition` | [#58](https://github.com/damien1967/Pheonix/issues/58) | P1 |
 | `GameDefinitionValidator` needs new failure modes once the above land (empty level sequence, etc.) | [#59](https://github.com/damien1967/Pheonix/issues/59) | P1 (depends on #57, #58) |
 
-### #7 — GridFillClearPlacementRule (shipped, minor rework)
+### #7 — GridFillClearPlacementRule (closed — rework done)
 
 | Gap | Issue | Priority |
 |---|---|---|
-| Checks `board.rowCount`/`board.columnCount` directly instead of querying cell existence through `GridShape`. **Functionally correct today** — Grid-Fill Clear is `Rectangular(8,8)` with no absent cells — but will silently misbehave on any non-rectangular `GameDefinition` once one exists | [#60](https://github.com/damien1967/Pheonix/issues/60) | P1 (depends on #50) |
+| **Done.** Checked `board.rowCount`/`board.columnCount` directly instead of querying cell existence through `GridShape`. Now validates via `board.shape.contains(position)`. | [#60](https://github.com/damien1967/Pheonix/issues/60) (closed) | — |
 
-### #8 — GridFillClearInteractionRule (shipped, needs addition)
+### #8 — GridFillClearInteractionRule (closed — rework done)
 
 | Gap | Issue | Priority |
 |---|---|---|
-| Doesn't implement the reference mechanic's own drop trigger table (Piece Swap, Score Multiplier, Cell Eraser, Tray Refresh, Line Bomb — `PHOENIX_REWARDS_AND_AUGMENTATION.md` §3.2). `DropEvent` now exists (#54) — unblocked | [#61](https://github.com/damien1967/Pheonix/issues/61) | P1 |
+| **Done.** Implements the reference mechanic's own drop trigger table (Piece Swap, Score Multiplier, Cell Eraser, Tray Refresh, Line Bomb — `PHOENIX_REWARDS_AND_AUGMENTATION.md` §3.2). `resolve()` computes simultaneous line count and emits the matching `DropEvent`s, stacking rather than mutually exclusive. | [#61](https://github.com/damien1967/Pheonix/issues/61) (closed) | — |
 
-### #9, #10 — not yet started
+All 4 sub-issues of #8 are closed; #8 itself is closed.
+
+### #9, #10 — #9 done, #10 not yet started
 
 Flagged rather than described as debt, since there's no shipped code yet to drift — but both would currently be built against interfaces that are already known to be wrong:
 
 | Ticket | Issue | Priority |
 |---|---|---|
-| **Resolved.** #9 (`GridFillClearProgressionRule`) was blocked pending `ProgressionRule`'s redesign; #53 is done, #9 is unblocked. | [#62](https://github.com/damien1967/Pheonix/issues/62) (closed) | — |
+| **Resolved.** #9 (`GridFillClearProgressionRule`) was blocked pending `ProgressionRule`'s redesign; #53 landed, #9 was implemented and closed. | [#62](https://github.com/damien1967/Pheonix/issues/62) (closed) | — |
 | #10 (`GridFillClearScoringRule`) — needs milestone-drop emission support before its Wildcard trigger can be implemented — #55 done, now unblocked | [#63](https://github.com/damien1967/Pheonix/issues/63) | P1 |
 
 ### Clean sweep
@@ -83,6 +85,6 @@ All three original P0 roots are closed. #56 (the `SessionOutcome`/`levelOutcome`
 
 **Correction found while starting #53:** this order didn't catch that #53 ("`ProgressionRule` supplies the next `LevelConfig`") had no type to supply until `LevelConfig`/`LevelSequence` existed — that's #57, not one of the three listed roots. **[#57](https://github.com/damien1967/Pheonix/issues/57) was done first** (closed), ahead of #53.
 
-**Remaining open debt:** #58, #59, #60, #61, #63 — all P1, all unblocked now except #59 (depends on #58). None are P0 roots; each can be picked up independently.
+**Remaining open debt:** #58, #59, #63 — all P1, all unblocked now except #59 (depends on #58). None are P0 roots; each can be picked up independently.
 
 **Per the standing instruction:** the P0 root debt is addressed. #9 (`GridFillClearProgressionRule`) is confirmed unblocked (#62). Phase 3 ticket work can resume; check each ticket's own spec section against `TECHNICAL_DEBT.md` before starting, per the standing rule above.

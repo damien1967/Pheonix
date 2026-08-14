@@ -4,6 +4,7 @@ import phoenix.board.BoardPosition
 import phoenix.board.CellState
 import phoenix.board.GameBoard
 import phoenix.board.GridShape
+import phoenix.mechanic.DropEvent
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -98,5 +99,85 @@ class GridFillClearInteractionRuleTest {
         )
         rule.resolve(board)
         assertEquals(CellState.OCCUPIED, board.cellAt(BoardPosition(0, 0)).state)
+    }
+
+    @Test
+    fun given_noLinesCleared_when_resolved_then_dropsListEmpty() {
+        val board = boardWithOccupied(
+            rowCount = 3,
+            columnCount = 3,
+            occupied = listOf(BoardPosition(0, 0), BoardPosition(1, 1))
+        )
+        val result = rule.resolve(board)
+        assertEquals(emptyList(), result.drops)
+    }
+
+    @Test
+    fun given_singleLineCleared_when_resolved_then_pieceSwapDropOnly() {
+        val board = boardWithOccupied(
+            rowCount = 3,
+            columnCount = 3,
+            occupied = listOf(BoardPosition(0, 0), BoardPosition(0, 1), BoardPosition(0, 2))
+        )
+        val result = rule.resolve(board)
+        assertEquals(listOf(DropEvent(powerUpId = "PieceSwap")), result.drops)
+    }
+
+    @Test
+    fun given_twoLinesSimultaneouslyCleared_when_resolved_then_pieceSwapAndScoreMultiplierDrop() {
+        val board = boardWithOccupied(
+            rowCount = 3,
+            columnCount = 3,
+            occupied = listOf(
+                BoardPosition(0, 0), BoardPosition(0, 1), BoardPosition(0, 2),
+                BoardPosition(1, 0), BoardPosition(1, 1), BoardPosition(1, 2)
+            )
+        )
+        val result = rule.resolve(board)
+        assertEquals(
+            listOf(DropEvent(powerUpId = "PieceSwap"), DropEvent(powerUpId = "ScoreMultiplier")),
+            result.drops
+        )
+    }
+
+    @Test
+    fun given_threeLinesSimultaneouslyCleared_when_resolved_then_pieceSwapCellEraserAndTrayRefreshDrop() {
+        val board = boardWithOccupied(
+            rowCount = 4,
+            columnCount = 3,
+            occupied = listOf(
+                BoardPosition(0, 0), BoardPosition(0, 1), BoardPosition(0, 2),
+                BoardPosition(1, 0), BoardPosition(1, 1), BoardPosition(1, 2),
+                BoardPosition(2, 0), BoardPosition(2, 1), BoardPosition(2, 2)
+            )
+        )
+        val result = rule.resolve(board)
+        assertEquals(
+            listOf(
+                DropEvent(powerUpId = "PieceSwap"),
+                DropEvent(powerUpId = "CellEraser"),
+                DropEvent(powerUpId = "TrayRefresh")
+            ),
+            result.drops
+        )
+    }
+
+    @Test
+    fun given_fourLinesSimultaneouslyCleared_when_resolved_then_pieceSwapAndLineBombDrop() {
+        val board = boardWithOccupied(
+            rowCount = 5,
+            columnCount = 4,
+            occupied = listOf(
+                BoardPosition(0, 0), BoardPosition(0, 1), BoardPosition(0, 2), BoardPosition(0, 3),
+                BoardPosition(1, 0), BoardPosition(1, 1), BoardPosition(1, 2), BoardPosition(1, 3),
+                BoardPosition(2, 0), BoardPosition(2, 1), BoardPosition(2, 2), BoardPosition(2, 3),
+                BoardPosition(3, 0), BoardPosition(3, 1), BoardPosition(3, 2), BoardPosition(3, 3)
+            )
+        )
+        val result = rule.resolve(board)
+        assertEquals(
+            listOf(DropEvent(powerUpId = "PieceSwap"), DropEvent(powerUpId = "LineBomb")),
+            result.drops
+        )
     }
 }

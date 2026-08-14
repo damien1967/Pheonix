@@ -29,7 +29,7 @@ All 11 sub-issues of #1 (original implementation + #50/#51/#52 rework) are close
 |---|---|---|
 | **Done.** `ProgressionRule` gains `nextLevel()` and `levelOutcome()` alongside `speedMultiplierAtTurn()` — supplies the next `LevelConfig` and signals level-clear/game-over/final-level, implementing the #56 mapping. Required #57 (`LevelConfig`/`LevelSequence`) as a prerequisite, done first once noticed. Unblocks #9/#62. | [#53](https://github.com/damien1967/Pheonix/issues/53) (closed) | P0 |
 | **Done.** `DropEvent(val powerUpId: String)` added, mirroring `Reward(val id: String)`'s existing pattern rather than a closed `PowerUpType` enum (that catalogue is game-specific, and rule 3 rules out engine changes per game). `InteractionResult` gains `drops: List<DropEvent> = emptyList()`. Unblocks #55, #61, #63. | [#54](https://github.com/damien1967/Pheonix/issues/54) (closed) | P0 |
-| `ScoringRule`/`RewardRule` also need `DropEvent` emission (score-milestone drops, e.g. Wildcard) — now unblocked | [#55](https://github.com/damien1967/Pheonix/issues/55) | P1 |
+| **Done.** `ScoringRule.score()` returns `ScoringResult(score, drops)`; `RewardRule.rewardsEarnedAt()` returns `RewardResult(rewards, drops)` — both mirroring `InteractionResult`'s pattern from #54. No concrete implementation existed yet (#10/#11 not started), so only the noOp test stubs needed fixing. Unblocks #63. | [#55](https://github.com/damien1967/Pheonix/issues/55) (closed) | P1 |
 | **Resolved design question:** `SessionOutcome` (`Ongoing`/`Won`/`Lost`) doesn't map onto the Shell spec's four-way `levelOutcome` (`LEVEL_CLEARED`/`GAME_OVER`/`FINAL_LEVEL_CLEARED`/`ENDLESS_ENDED`). Resolved: `ProgressionRule` computes `levelOutcome` by combining `WinLossRule`'s result with level-sequence state (does a next `LevelConfig` exist, is this endless); `WinLossRule` itself is unchanged. See #56 for the full mapping — now a concrete input to #53. | [#56](https://github.com/damien1967/Pheonix/issues/56) (closed) | P1 |
 
 ### #6 — GameDefinition and validation (shipped, needs rework)
@@ -59,7 +59,7 @@ Flagged rather than described as debt, since there's no shipped code yet to drif
 | Ticket | Issue | Priority |
 |---|---|---|
 | **Resolved.** #9 (`GridFillClearProgressionRule`) was blocked pending `ProgressionRule`'s redesign; #53 is done, #9 is unblocked. | [#62](https://github.com/damien1967/Pheonix/issues/62) (closed) | — |
-| #10 (`GridFillClearScoringRule`) — needs milestone-drop emission support before its Wildcard trigger can be implemented | [#63](https://github.com/damien1967/Pheonix/issues/63) | P1 (blocked on #55) |
+| #10 (`GridFillClearScoringRule`) — needs milestone-drop emission support before its Wildcard trigger can be implemented — #55 done, now unblocked | [#63](https://github.com/damien1967/Pheonix/issues/63) | P1 |
 
 ### Clean sweep
 
@@ -83,6 +83,6 @@ All three original P0 roots are closed. #56 (the `SessionOutcome`/`levelOutcome`
 
 **Correction found while starting #53:** this order didn't catch that #53 ("`ProgressionRule` supplies the next `LevelConfig`") had no type to supply until `LevelConfig`/`LevelSequence` existed — that's #57, not one of the three listed roots. **[#57](https://github.com/damien1967/Pheonix/issues/57) was done first** (closed), ahead of #53.
 
-**Remaining open debt:** #55, #58, #59, #60, #61, #63 — all P1, all unblocked now except #59 (depends on #58) and #63 (depends on #55). None are P0 roots; each can be picked up independently.
+**Remaining open debt:** #58, #59, #60, #61, #63 — all P1, all unblocked now except #59 (depends on #58). None are P0 roots; each can be picked up independently.
 
 **Per the standing instruction:** the P0 root debt is addressed. #9 (`GridFillClearProgressionRule`) is confirmed unblocked (#62). Phase 3 ticket work can resume; check each ticket's own spec section against `TECHNICAL_DEBT.md` before starting, per the standing rule above.

@@ -12,8 +12,9 @@ import phoenix.mechanic.InteractionRule
 import phoenix.mechanic.LevelOutcome
 import phoenix.mechanic.PlacementRule
 import phoenix.mechanic.ProgressionRule
-import phoenix.mechanic.Reward
+import phoenix.mechanic.RewardResult
 import phoenix.mechanic.RewardRule
+import phoenix.mechanic.ScoringResult
 import phoenix.mechanic.ScoringRule
 import phoenix.mechanic.SessionOutcome
 import phoenix.mechanic.WinLossRule
@@ -51,10 +52,11 @@ class GameDefinitionTest {
             ) = LevelOutcome.FinalLevelCleared
         }
         override val scoring = object : ScoringRule {
-            override fun score(interactionResult: InteractionResult, currentScore: Int) = currentScore
+            override fun score(interactionResult: InteractionResult, currentScore: Int) =
+                ScoringResult(score = currentScore)
         }
         override val reward = object : RewardRule {
-            override fun rewardsEarnedAt(score: Int): List<Reward> = emptyList()
+            override fun rewardsEarnedAt(score: Int) = RewardResult(rewards = emptyList())
         }
         override val winLoss = object : WinLossRule {
             override fun outcome(board: GameBoard, pieceSource: PieceSource, score: Int) = SessionOutcome.Ongoing

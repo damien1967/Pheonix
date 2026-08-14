@@ -43,10 +43,11 @@ class GameMechanicTest {
             ) = LevelOutcome.FinalLevelCleared
         }
         override val scoring = object : ScoringRule {
-            override fun score(interactionResult: InteractionResult, currentScore: Int) = currentScore
+            override fun score(interactionResult: InteractionResult, currentScore: Int) =
+                ScoringResult(score = currentScore)
         }
         override val reward = object : RewardRule {
-            override fun rewardsEarnedAt(score: Int): List<Reward> = emptyList()
+            override fun rewardsEarnedAt(score: Int) = RewardResult(rewards = emptyList())
         }
         override val winLoss = object : WinLossRule {
             override fun outcome(board: GameBoard, pieceSource: PieceSource, score: Int) = SessionOutcome.Ongoing
@@ -68,8 +69,8 @@ class GameMechanicTest {
             LevelOutcome.FinalLevelCleared,
             noOpMechanic.progression.levelOutcome(SessionOutcome.Won, singleLevelSequence, completedLevelIndex = 0)
         )
-        assertEquals(10, noOpMechanic.scoring.score(InteractionResult(board, 0), currentScore = 10))
-        assertEquals(emptyList(), noOpMechanic.reward.rewardsEarnedAt(score = 100))
+        assertEquals(10, noOpMechanic.scoring.score(InteractionResult(board, 0), currentScore = 10).score)
+        assertEquals(emptyList(), noOpMechanic.reward.rewardsEarnedAt(score = 100).rewards)
         assertEquals(SessionOutcome.Ongoing, noOpMechanic.winLoss.outcome(board, source, score = 0))
         assertEquals(samplePiece, noOpMechanic.generation.nextPiece(source))
     }

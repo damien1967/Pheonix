@@ -5,12 +5,17 @@ import phoenix.board.GameBoard
 import phoenix.board.GridShape
 import phoenix.board.LevelConfig
 import phoenix.board.LevelSequence
+import phoenix.mechanic.DropCondition
+import phoenix.mechanic.DropOutcome
+import phoenix.mechanic.DropTrigger
 import phoenix.mechanic.GameMechanic
 import phoenix.mechanic.GenerationRule
 import phoenix.mechanic.InteractionResult
 import phoenix.mechanic.InteractionRule
+import phoenix.mechanic.LevelMode
 import phoenix.mechanic.LevelOutcome
 import phoenix.mechanic.PlacementRule
+import phoenix.mechanic.WeightedDrop
 import phoenix.mechanic.ProgressionRule
 import phoenix.mechanic.RewardResult
 import phoenix.mechanic.RewardRule
@@ -68,11 +73,15 @@ class GameDefinitionTest {
 
     private fun definition(
         levels: LevelSequence = LevelSequence(levels = listOf(LevelConfig(shape = GridShape.Rectangular(width = 8, height = 8)))),
-        pieceShapes: List<PieceShape> = listOf(samplePiece.shape)
+        pieceShapes: List<PieceShape> = listOf(samplePiece.shape),
+        levelMode: LevelMode = LevelMode.ENDLESS,
+        drops: List<DropTrigger> = emptyList()
     ) = GameDefinition(
         levels = levels,
         pieceShapes = pieceShapes,
-        mechanic = noOpMechanic
+        mechanic = noOpMechanic,
+        levelMode = levelMode,
+        drops = drops
     )
 
     @Test
@@ -90,6 +99,40 @@ class GameDefinitionTest {
     fun given_emptyPieceShapeList_when_validated_then_resultIsInvalid() {
         val result = GameDefinitionValidator.validate(definition(pieceShapes = emptyList()))
         assertTrue(result is ValidationResult.Invalid)
+    }
+
+    @Test
+    fun given_stagedLevelMode_when_constructed_then_levelModeAccessible() {
+        val gameDefinition = definition(levelMode = LevelMode.STAGED)
+        assertEquals(LevelMode.STAGED, gameDefinition.levelMode)
+    }
+
+    @Test
+    fun given_noDropsSupplied_when_constructed_then_dropsDefaultsToEmpty() {
+        assertEquals(emptyList(), definition().drops)
+    }
+
+    @Test
+    fun given_deterministicAndWeightedDropTriggers_when_constructed_then_dropsAccessible() {
+        val drops = listOf(
+            DropTrigger(
+                condition = DropCondition.AnyLineCleared,
+                outcome = DropOutcome.Deterministic(powerUpIds = listOf("PieceSwap"))
+            ),
+            DropTrigger(
+                condition = DropCondition.SimultaneousClears(lineCount = 4),
+                outcome = DropOutcome.Weighted(
+                    odds = listOf(
+                        WeightedDrop(powerUpId = "LineBomb", weightPercent = 5),
+                        WeightedDrop(powerUpId = "ScoreMultiplier", weightPercent = 10)
+                    )
+                )
+            )
+        )
+
+        val gameDefinition = definition(drops = drops)
+
+        assertEquals(drops, gameDefinition.drops)
     }
 
     @Test

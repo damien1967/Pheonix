@@ -37,7 +37,7 @@ All 11 sub-issues of #1 (original implementation + #50/#51/#52 rework) are close
 | Gap | Issue | Priority |
 |---|---|---|
 | **Done.** `BoardConfig` replaced with `LevelConfig` (`GridShape` + `blockedCells`); `GameDefinition.board` (singular) replaced with `GameDefinition.levels: LevelSequence` — `CLAUDE.md` rule 7. `zones` deferred to #52 (Zone metadata storage doesn't exist yet). Turned out to be a real prerequisite for #53 (ProgressionRule can't supply a `LevelConfig` that doesn't exist) — done first, ahead of the original #50→#53→#54 remediation order below. | [#57](https://github.com/damien1967/Pheonix/issues/57) (closed) | P1 (depended on #50) |
-| No `levelMode` (`endless`/`staged`/`generated`), no `drops` trigger table on `GameDefinition` | [#58](https://github.com/damien1967/Pheonix/issues/58) | P1 |
+| **Done.** `GameDefinition` gains `levelMode: LevelMode` (`ENDLESS`/`STAGED`/`GENERATED`) and `drops: List<DropTrigger>`. Each `DropTrigger` pairs a `DropCondition` (cyclic: `AnyLineCleared`, `SimultaneousClears(n)`, `PersonalBestInSession` — stateless per-placement checks that can refire any number of times; sequential: `ScoreMilestones(thresholds)` — one ordered list, each threshold fires at most once) with a `DropOutcome` (`Deterministic` — every listed power-up fires, or `Weighted` — one roll against odds that need not sum to 100, the shortfall being an implicit no-drop chance, reserved for conditions that are already hard to achieve). Each `DropTrigger` is self-contained by construction — no cross-trigger references — so the table has no ordering dependency and can't form a cycle between triggers. Scoped to the data model only: `GridFillClearInteractionRule` (#61) keeps its own hardcoded trigger table for now rather than reading this one generically — wiring a mechanic's rules to consume `drops` at runtime is a separate, larger follow-up (a generic trigger-evaluation engine), not part of this ticket. Odds/threshold validation deferred to #59. | [#58](https://github.com/damien1967/Pheonix/issues/58) (closed) | — |
 | `GameDefinitionValidator` needs new failure modes once the above land (empty level sequence, etc.) | [#59](https://github.com/damien1967/Pheonix/issues/59) | P1 (depends on #57, #58) |
 
 ### #7 — GridFillClearPlacementRule (closed — rework done)
@@ -85,6 +85,6 @@ All three original P0 roots are closed. #56 (the `SessionOutcome`/`levelOutcome`
 
 **Correction found while starting #53:** this order didn't catch that #53 ("`ProgressionRule` supplies the next `LevelConfig`") had no type to supply until `LevelConfig`/`LevelSequence` existed — that's #57, not one of the three listed roots. **[#57](https://github.com/damien1967/Pheonix/issues/57) was done first** (closed), ahead of #53.
 
-**Remaining open debt:** #58, #59, #63 — all P1, all unblocked now except #59 (depends on #58). None are P0 roots; each can be picked up independently.
+**Remaining open debt:** #59, #63 — both P1. #58 is closed, so #59 is now unblocked too. Neither is a P0 root; each can be picked up independently.
 
 **Per the standing instruction:** the P0 root debt is addressed. #9 (`GridFillClearProgressionRule`) is confirmed unblocked (#62). Phase 3 ticket work can resume; check each ticket's own spec section against `TECHNICAL_DEBT.md` before starting, per the standing rule above.

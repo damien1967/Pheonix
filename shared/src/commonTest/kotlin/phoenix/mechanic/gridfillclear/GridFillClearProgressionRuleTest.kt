@@ -2,6 +2,7 @@ package phoenix.mechanic.gridfillclear
 
 import phoenix.board.GridShape
 import phoenix.board.LevelConfig
+import phoenix.board.LevelGenerator
 import phoenix.board.LevelSequence
 import phoenix.board.LevelSource
 import phoenix.mechanic.LevelOutcome
@@ -60,5 +61,18 @@ class GridFillClearProgressionRuleTest {
         val next = rule.nextLevel(generatedSource, completedLevelIndex = 0)
 
         assertEquals(generatedConfig, next)
+    }
+
+    @Test
+    fun given_compositeLevelSourceWithOverrideAtZero_when_nextLevelRequested_then_returnsAuthoredOverride() {
+        val bonusConfig = LevelConfig(shape = GridShape.Rectangular(width = 12, height = 12))
+        val compositeSource = LevelSource.Composite(
+            generator = LevelGenerator { index -> LevelConfig(shape = GridShape.Rectangular(width = index, height = index)) },
+            authoredOverrides = mapOf(0 to bonusConfig)
+        )
+
+        val next = rule.nextLevel(compositeSource, completedLevelIndex = 0)
+
+        assertEquals(bonusConfig, next)
     }
 }

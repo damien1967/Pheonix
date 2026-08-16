@@ -4,6 +4,7 @@ import phoenix.board.BoardPosition
 import phoenix.board.GameBoard
 import phoenix.board.GridShape
 import phoenix.board.LevelConfig
+import phoenix.board.LevelGenerator
 import phoenix.board.LevelSequence
 import phoenix.board.LevelSource
 import phoenix.mechanic.DropCondition
@@ -115,6 +116,175 @@ class GameDefinitionTest {
     fun given_emptyPieceShapeList_when_validated_then_resultIsInvalid() {
         val result = GameDefinitionValidator.validate(definition(pieceShapes = emptyList()))
         assertTrue(result is ValidationResult.Invalid)
+    }
+
+    @Test
+    fun given_stagedModeWithOneAuthoredLevel_when_validated_then_resultIsInvalid() {
+        val oneLevel = LevelSource.Authored(
+            LevelSequence(levels = listOf(LevelConfig(shape = GridShape.Rectangular(width = 4, height = 4))))
+        )
+        val result = GameDefinitionValidator.validate(definition(levels = oneLevel, levelMode = LevelMode.STAGED))
+        assertTrue(result is ValidationResult.Invalid)
+    }
+
+    @Test
+    fun given_stagedModeWithTwoAuthoredLevels_when_validated_then_resultIsValid() {
+        val twoLevels = LevelSource.Authored(
+            LevelSequence(
+                levels = listOf(
+                    LevelConfig(shape = GridShape.Rectangular(width = 4, height = 4)),
+                    LevelConfig(shape = GridShape.Rectangular(width = 5, height = 5))
+                )
+            )
+        )
+        val result = GameDefinitionValidator.validate(definition(levels = twoLevels, levelMode = LevelMode.STAGED))
+        assertEquals(ValidationResult.Valid, result)
+    }
+
+    @Test
+    fun given_compositeSourceWithNegativeOverrideIndex_when_validated_then_resultIsInvalid() {
+        val composite = LevelSource.Composite(
+            generator = LevelGenerator { index -> LevelConfig(shape = GridShape.Rectangular(width = 4, height = 4)) },
+            authoredOverrides = mapOf(-1 to LevelConfig(shape = GridShape.Rectangular(width = 4, height = 4)))
+        )
+        val result = GameDefinitionValidator.validate(definition(levels = composite))
+        assertTrue(result is ValidationResult.Invalid)
+    }
+
+    @Test
+    fun given_compositeSourceWithNonNegativeOverrideIndices_when_validated_then_resultIsValid() {
+        val composite = LevelSource.Composite(
+            generator = LevelGenerator { index -> LevelConfig(shape = GridShape.Rectangular(width = 4, height = 4)) },
+            authoredOverrides = mapOf(10 to LevelConfig(shape = GridShape.Rectangular(width = 9, height = 9)))
+        )
+        val result = GameDefinitionValidator.validate(definition(levels = composite))
+        assertEquals(ValidationResult.Valid, result)
+    }
+
+    @Test
+    fun given_simultaneousClearsLineCountBelowTwo_when_validated_then_resultIsInvalid() {
+        val drops = listOf(
+            DropTrigger(
+                condition = DropCondition.Engine.SimultaneousClears(lineCount = 1),
+                outcome = DropOutcome.Deterministic(powerUpIds = listOf("PieceSwap"))
+            )
+        )
+        val result = GameDefinitionValidator.validate(definition(drops = drops))
+        assertTrue(result is ValidationResult.Invalid)
+    }
+
+    @Test
+    fun given_scoreMilestonesEmpty_when_validated_then_resultIsInvalid() {
+        val drops = listOf(
+            DropTrigger(
+                condition = DropCondition.Engine.ScoreMilestones(thresholds = emptyList()),
+                outcome = DropOutcome.Deterministic(powerUpIds = listOf("Wildcard"))
+            )
+        )
+        val result = GameDefinitionValidator.validate(definition(drops = drops))
+        assertTrue(result is ValidationResult.Invalid)
+    }
+
+    @Test
+    fun given_scoreMilestonesNotStrictlyIncreasing_when_validated_then_resultIsInvalid() {
+        val drops = listOf(
+            DropTrigger(
+                condition = DropCondition.Engine.ScoreMilestones(thresholds = listOf(500, 500, 1000)),
+                outcome = DropOutcome.Deterministic(powerUpIds = listOf("Wildcard"))
+            )
+        )
+        val result = GameDefinitionValidator.validate(definition(drops = drops))
+        assertTrue(result is ValidationResult.Invalid)
+    }
+
+    @Test
+    fun given_scoreMilestonesNonPositive_when_validated_then_resultIsInvalid() {
+        val drops = listOf(
+            DropTrigger(
+                condition = DropCondition.Engine.ScoreMilestones(thresholds = listOf(0, 500)),
+                outcome = DropOutcome.Deterministic(powerUpIds = listOf("Wildcard"))
+            )
+        )
+        val result = GameDefinitionValidator.validate(definition(drops = drops))
+        assertTrue(result is ValidationResult.Invalid)
+    }
+
+    @Test
+    fun given_deterministicOutcomeWithNoPowerUpIds_when_validated_then_resultIsInvalid() {
+        val drops = listOf(
+            DropTrigger(
+                condition = DropCondition.Engine.AnyLineCleared,
+                outcome = DropOutcome.Deterministic(powerUpIds = emptyList())
+            )
+        )
+        val result = GameDefinitionValidator.validate(definition(drops = drops))
+        assertTrue(result is ValidationResult.Invalid)
+    }
+
+    @Test
+    fun given_weightedOutcomeWithNoOdds_when_validated_then_resultIsInvalid() {
+        val drops = listOf(
+            DropTrigger(
+                condition = DropCondition.Engine.SimultaneousClears(lineCount = 4),
+                outcome = DropOutcome.Weighted(odds = emptyList())
+            )
+        )
+        val result = GameDefinitionValidator.validate(definition(drops = drops))
+        assertTrue(result is ValidationResult.Invalid)
+    }
+
+    @Test
+    fun given_weightedOutcomeWithNonPositiveWeight_when_validated_then_resultIsInvalid() {
+        val drops = listOf(
+            DropTrigger(
+                condition = DropCondition.Engine.SimultaneousClears(lineCount = 4),
+                outcome = DropOutcome.Weighted(odds = listOf(WeightedDrop(powerUpId = "LineBomb", weightPercent = 0)))
+            )
+        )
+        val result = GameDefinitionValidator.validate(definition(drops = drops))
+        assertTrue(result is ValidationResult.Invalid)
+    }
+
+    @Test
+    fun given_weightedOutcomeOddsExceedingOneHundredPercent_when_validated_then_resultIsInvalid() {
+        val drops = listOf(
+            DropTrigger(
+                condition = DropCondition.Engine.SimultaneousClears(lineCount = 4),
+                outcome = DropOutcome.Weighted(
+                    odds = listOf(
+                        WeightedDrop(powerUpId = "LineBomb", weightPercent = 60),
+                        WeightedDrop(powerUpId = "ScoreMultiplier", weightPercent = 50)
+                    )
+                )
+            )
+        )
+        val result = GameDefinitionValidator.validate(definition(drops = drops))
+        assertTrue(result is ValidationResult.Invalid)
+    }
+
+    @Test
+    fun given_validDeterministicAndWeightedDrops_when_validated_then_resultIsValid() {
+        val drops = listOf(
+            DropTrigger(
+                condition = DropCondition.Engine.AnyLineCleared,
+                outcome = DropOutcome.Deterministic(powerUpIds = listOf("PieceSwap"))
+            ),
+            DropTrigger(
+                condition = DropCondition.Engine.SimultaneousClears(lineCount = 4),
+                outcome = DropOutcome.Weighted(
+                    odds = listOf(
+                        WeightedDrop(powerUpId = "LineBomb", weightPercent = 5),
+                        WeightedDrop(powerUpId = "ScoreMultiplier", weightPercent = 10)
+                    )
+                )
+            ),
+            DropTrigger(
+                condition = DropCondition.Shell.PersonalBestInSession,
+                outcome = DropOutcome.Deterministic(powerUpIds = listOf("Undo"))
+            )
+        )
+        val result = GameDefinitionValidator.validate(definition(drops = drops))
+        assertEquals(ValidationResult.Valid, result)
     }
 
     @Test

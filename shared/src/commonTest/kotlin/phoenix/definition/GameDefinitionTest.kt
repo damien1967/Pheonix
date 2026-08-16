@@ -116,17 +116,31 @@ class GameDefinitionTest {
     fun given_deterministicAndWeightedDropTriggers_when_constructed_then_dropsAccessible() {
         val drops = listOf(
             DropTrigger(
-                condition = DropCondition.AnyLineCleared,
+                condition = DropCondition.Engine.AnyLineCleared,
                 outcome = DropOutcome.Deterministic(powerUpIds = listOf("PieceSwap"))
             ),
             DropTrigger(
-                condition = DropCondition.SimultaneousClears(lineCount = 4),
+                condition = DropCondition.Engine.SimultaneousClears(lineCount = 4),
                 outcome = DropOutcome.Weighted(
                     odds = listOf(
                         WeightedDrop(powerUpId = "LineBomb", weightPercent = 5),
                         WeightedDrop(powerUpId = "ScoreMultiplier", weightPercent = 10)
                     )
                 )
+            )
+        )
+
+        val gameDefinition = definition(drops = drops)
+
+        assertEquals(drops, gameDefinition.drops)
+    }
+
+    @Test
+    fun given_shellEvaluatedDropTrigger_when_constructed_then_dropsAccessible() {
+        val drops = listOf(
+            DropTrigger(
+                condition = DropCondition.Shell.PersonalBestInSession,
+                outcome = DropOutcome.Deterministic(powerUpIds = listOf("Undo"))
             )
         )
 

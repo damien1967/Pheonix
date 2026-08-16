@@ -1,7 +1,7 @@
 package phoenix.mechanic.gridfillclear
 
 import phoenix.board.LevelConfig
-import phoenix.board.LevelSequence
+import phoenix.board.LevelSource
 import phoenix.mechanic.LevelOutcome
 import phoenix.mechanic.ProgressionRule
 import phoenix.mechanic.SessionOutcome
@@ -10,13 +10,16 @@ class GridFillClearProgressionRule : ProgressionRule {
 
     override fun speedMultiplierAtTurn(turnCount: Int): Double = 1.0
 
-    override fun nextLevel(levelSequence: LevelSequence, completedLevelIndex: Int): LevelConfig {
-        return levelSequence.levels[0]
+    override fun nextLevel(levelSource: LevelSource, completedLevelIndex: Int): LevelConfig {
+        return when (levelSource) {
+            is LevelSource.Authored -> levelSource.sequence.levels[0]
+            is LevelSource.Generated -> levelSource.generator.levelAt(0)
+        }
     }
 
     override fun levelOutcome(
         sessionOutcome: SessionOutcome,
-        levelSequence: LevelSequence,
+        levelSource: LevelSource,
         completedLevelIndex: Int
     ): LevelOutcome {
         return when (sessionOutcome) {

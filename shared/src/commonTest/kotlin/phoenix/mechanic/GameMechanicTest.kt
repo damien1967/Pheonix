@@ -5,6 +5,7 @@ import phoenix.board.GameBoard
 import phoenix.board.GridShape
 import phoenix.board.LevelConfig
 import phoenix.board.LevelSequence
+import phoenix.board.LevelSource
 import phoenix.piece.CellOffset
 import phoenix.piece.GamePiece
 import phoenix.piece.PieceLifecycleState
@@ -21,8 +22,8 @@ class GameMechanicTest {
         lifecycleState = PieceLifecycleState.InSource
     )
 
-    private val singleLevelSequence = LevelSequence(
-        levels = listOf(LevelConfig(shape = GridShape.Rectangular(width = 1, height = 1)))
+    private val singleLevelSource = LevelSource.Authored(
+        LevelSequence(levels = listOf(LevelConfig(shape = GridShape.Rectangular(width = 1, height = 1))))
     )
 
     private val noOpMechanic = object : GameMechanic {
@@ -34,11 +35,13 @@ class GameMechanicTest {
         }
         override val progression = object : ProgressionRule {
             override fun speedMultiplierAtTurn(turnCount: Int) = 1.0
-            override fun nextLevel(levelSequence: LevelSequence, completedLevelIndex: Int) =
-                levelSequence.levels[completedLevelIndex + 1]
+            override fun nextLevel(levelSource: LevelSource, completedLevelIndex: Int): LevelConfig {
+                check(levelSource is LevelSource.Authored)
+                return levelSource.sequence.levels[completedLevelIndex + 1]
+            }
             override fun levelOutcome(
                 sessionOutcome: SessionOutcome,
-                levelSequence: LevelSequence,
+                levelSource: LevelSource,
                 completedLevelIndex: Int
             ) = LevelOutcome.FinalLevelCleared
         }
@@ -67,7 +70,7 @@ class GameMechanicTest {
         assertEquals(1.0, noOpMechanic.progression.speedMultiplierAtTurn(turnCount = 5))
         assertEquals(
             LevelOutcome.FinalLevelCleared,
-            noOpMechanic.progression.levelOutcome(SessionOutcome.Won, singleLevelSequence, completedLevelIndex = 0)
+            noOpMechanic.progression.levelOutcome(SessionOutcome.Won, singleLevelSource, completedLevelIndex = 0)
         )
         assertEquals(10, noOpMechanic.scoring.score(InteractionResult(board, 0), currentScore = 10).score)
         assertEquals(emptyList(), noOpMechanic.reward.rewardsEarnedAt(score = 100).rewards)

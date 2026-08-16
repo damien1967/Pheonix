@@ -1,9 +1,12 @@
 package phoenix.definition
 
+import phoenix.board.LevelSource
+
 object GameDefinitionValidator {
 
     fun validate(definition: GameDefinition): ValidationResult {
-        if (definition.levels.levels.isEmpty()) {
+        val levels = definition.levels
+        if (levels is LevelSource.Authored && levels.sequence.levels.isEmpty()) {
             return ValidationResult.Invalid("LevelSequence must contain at least one LevelConfig")
         }
         if (definition.pieceShapes.isEmpty()) {

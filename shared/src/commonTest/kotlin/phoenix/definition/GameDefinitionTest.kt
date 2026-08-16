@@ -5,6 +5,7 @@ import phoenix.board.GameBoard
 import phoenix.board.GridShape
 import phoenix.board.LevelConfig
 import phoenix.board.LevelSequence
+import phoenix.board.LevelSource
 import phoenix.mechanic.DropCondition
 import phoenix.mechanic.DropOutcome
 import phoenix.mechanic.DropTrigger
@@ -48,11 +49,13 @@ class GameDefinitionTest {
         }
         override val progression = object : ProgressionRule {
             override fun speedMultiplierAtTurn(turnCount: Int) = 1.0
-            override fun nextLevel(levelSequence: LevelSequence, completedLevelIndex: Int) =
-                levelSequence.levels[completedLevelIndex + 1]
+            override fun nextLevel(levelSource: LevelSource, completedLevelIndex: Int): LevelConfig {
+                check(levelSource is LevelSource.Authored)
+                return levelSource.sequence.levels[completedLevelIndex + 1]
+            }
             override fun levelOutcome(
                 sessionOutcome: SessionOutcome,
-                levelSequence: LevelSequence,
+                levelSource: LevelSource,
                 completedLevelIndex: Int
             ) = LevelOutcome.FinalLevelCleared
         }
@@ -72,7 +75,9 @@ class GameDefinitionTest {
     }
 
     private fun definition(
-        levels: LevelSequence = LevelSequence(levels = listOf(LevelConfig(shape = GridShape.Rectangular(width = 8, height = 8)))),
+        levels: LevelSource = LevelSource.Authored(
+            LevelSequence(levels = listOf(LevelConfig(shape = GridShape.Rectangular(width = 8, height = 8))))
+        ),
         pieceShapes: List<PieceShape> = listOf(samplePiece.shape),
         levelMode: LevelMode = LevelMode.ENDLESS,
         drops: List<DropTrigger> = emptyList()
@@ -91,8 +96,19 @@ class GameDefinitionTest {
 
     @Test
     fun given_emptyLevelSequence_when_validated_then_resultIsInvalid() {
-        val result = GameDefinitionValidator.validate(definition(levels = LevelSequence(levels = emptyList())))
+        val result = GameDefinitionValidator.validate(
+            definition(levels = LevelSource.Authored(LevelSequence(levels = emptyList())))
+        )
         assertTrue(result is ValidationResult.Invalid)
+    }
+
+    @Test
+    fun given_generatedLevelSource_when_validated_then_resultIsValid() {
+        val generatedSource = LevelSource.Generated { index ->
+            LevelConfig(shape = GridShape.Rectangular(width = 8 + index, height = 8 + index))
+        }
+        val result = GameDefinitionValidator.validate(definition(levels = generatedSource))
+        assertEquals(ValidationResult.Valid, result)
     }
 
     @Test

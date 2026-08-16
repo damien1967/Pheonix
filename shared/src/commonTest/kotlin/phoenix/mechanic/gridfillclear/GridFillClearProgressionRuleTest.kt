@@ -3,6 +3,7 @@ package phoenix.mechanic.gridfillclear
 import phoenix.board.GridShape
 import phoenix.board.LevelConfig
 import phoenix.board.LevelSequence
+import phoenix.board.LevelSource
 import phoenix.mechanic.LevelOutcome
 import phoenix.mechanic.SessionOutcome
 import kotlin.test.Test
@@ -16,6 +17,7 @@ class GridFillClearProgressionRuleTest {
     private val endlessLevelSequence = LevelSequence(
         levels = listOf(LevelConfig(shape = GridShape.Rectangular(width = 8, height = 8)))
     )
+    private val endlessLevelSource = LevelSource.Authored(endlessLevelSequence)
 
     @Test
     fun given_pieceResolved_when_turnAdvances_then_noTimerSideEffects() {
@@ -26,27 +28,37 @@ class GridFillClearProgressionRuleTest {
 
     @Test
     fun given_lostSession_when_levelOutcomeComputed_then_returnsEndlessEnded() {
-        val outcome = rule.levelOutcome(SessionOutcome.Lost, endlessLevelSequence, completedLevelIndex = 0)
+        val outcome = rule.levelOutcome(SessionOutcome.Lost, endlessLevelSource, completedLevelIndex = 0)
         assertEquals(LevelOutcome.EndlessEnded, outcome)
     }
 
     @Test
     fun given_wonSession_when_levelOutcomeComputed_then_throwsIllegalArgumentException() {
         assertFailsWith<IllegalArgumentException> {
-            rule.levelOutcome(SessionOutcome.Won, endlessLevelSequence, completedLevelIndex = 0)
+            rule.levelOutcome(SessionOutcome.Won, endlessLevelSource, completedLevelIndex = 0)
         }
     }
 
     @Test
     fun given_ongoingSession_when_levelOutcomeComputed_then_throwsIllegalArgumentException() {
         assertFailsWith<IllegalArgumentException> {
-            rule.levelOutcome(SessionOutcome.Ongoing, endlessLevelSequence, completedLevelIndex = 0)
+            rule.levelOutcome(SessionOutcome.Ongoing, endlessLevelSource, completedLevelIndex = 0)
         }
     }
 
     @Test
     fun given_endlessSession_when_nextLevelRequested_then_returnsSameLevelConfig() {
-        val next = rule.nextLevel(endlessLevelSequence, completedLevelIndex = 0)
+        val next = rule.nextLevel(endlessLevelSource, completedLevelIndex = 0)
         assertEquals(endlessLevelSequence.levels[0], next)
+    }
+
+    @Test
+    fun given_generatedLevelSource_when_nextLevelRequested_then_returnsGeneratorLevelZero() {
+        val generatedConfig = LevelConfig(shape = GridShape.Rectangular(width = 10, height = 10))
+        val generatedSource = LevelSource.Generated { index -> if (index == 0) generatedConfig else error("unexpected index") }
+
+        val next = rule.nextLevel(generatedSource, completedLevelIndex = 0)
+
+        assertEquals(generatedConfig, next)
     }
 }

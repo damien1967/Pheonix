@@ -27,6 +27,7 @@ class GridFillClearInteractionRuleTest {
         )
         val result = rule.resolve(board)
         assertEquals(3, result.resolvedCellCount)
+        assertEquals(1, result.resolvedGroupCount)
         for (column in 0 until 3) {
             assertEquals(CellState.EMPTY, result.board.cellAt(BoardPosition(0, column)).state)
         }
@@ -41,6 +42,7 @@ class GridFillClearInteractionRuleTest {
         )
         val result = rule.resolve(board)
         assertEquals(3, result.resolvedCellCount)
+        assertEquals(1, result.resolvedGroupCount)
         for (row in 0 until 3) {
             assertEquals(CellState.EMPTY, result.board.cellAt(BoardPosition(row, 1)).state)
         }
@@ -58,6 +60,7 @@ class GridFillClearInteractionRuleTest {
         )
         val result = rule.resolve(board)
         assertEquals(5, result.resolvedCellCount)
+        assertEquals(2, result.resolvedGroupCount)
         assertEquals(CellState.EMPTY, result.board.cellAt(BoardPosition(0, 0)).state)
         assertEquals(CellState.EMPTY, result.board.cellAt(BoardPosition(1, 0)).state)
         assertEquals(CellState.EMPTY, result.board.cellAt(BoardPosition(2, 0)).state)
@@ -76,6 +79,7 @@ class GridFillClearInteractionRuleTest {
         )
         val result = rule.resolve(board)
         assertEquals(6, result.resolvedCellCount)
+        assertEquals(2, result.resolvedGroupCount)
     }
 
     @Test
@@ -87,6 +91,7 @@ class GridFillClearInteractionRuleTest {
         )
         val result = rule.resolve(board)
         assertEquals(0, result.resolvedCellCount)
+        assertEquals(0, result.resolvedGroupCount)
         assertEquals(board, result.board)
     }
 

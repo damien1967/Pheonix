@@ -42,6 +42,8 @@ All 11 sub-issues of #1 (original implementation + #50/#51/#52 rework) are close
 | **Done.** `LevelSource`'s `Authored`/`Generated` split (#100) turned out to be too rigid — level sourcing isn't all-or-nothing per `GameDefinition` (e.g. 10 procedurally generated levels, then a fixed hand-authored bonus level, then back to generated). Added `LevelSource.Composite(generator, authoredOverrides: Map<Int, LevelConfig>)`, which resolves an index from `authoredOverrides` first and falls back to the generator otherwise. Gave `LevelSource` a `levelAt(index): LevelConfig` method so all three variants resolve the same way, and simplified `GridFillClearProgressionRule.nextLevel` to call it instead of its own `when`. `levelMode` and `LevelSource` are deliberately *not* cross-validated against each other — a mixed generated/authored progression like the one above doesn't map cleanly onto any single `LevelMode` value, so the three `levelMode` values and the three `LevelSource` variants are independent axes, not a 1:1 mapping. Discovered while scoping #59. | [#101](https://github.com/damien1967/Pheonix/issues/101) (closed) | — |
 | **Done.** `GameDefinitionValidator` extended for `levelMode`/`LevelSource`/`drops`: staged mode with fewer than two authored levels is invalid; a `Composite` source with a negative `authoredOverrides` index is invalid; per-`DropTrigger` checks reject a `SimultaneousClears` with `lineCount < 2`, an empty or non-increasing or non-positive `ScoreMilestones` threshold list, a `Deterministic` outcome with no (or blank) `powerUpIds`, and a `Weighted` outcome with no odds, a non-positive `weightPercent`, a blank `powerUpId`, or odds summing above 100. Deliberately does *not* cross-check `levelMode` against the actual `LevelSource` variant — see #101, they're independent axes by design. | [#59](https://github.com/damien1967/Pheonix/issues/59) (closed) | — |
 
+All rework items under #6 (#57, #58, #100, #101, #59) are closed; #6 itself is closed.
+
 ### #7 — GridFillClearPlacementRule (closed — rework done)
 
 | Gap | Issue | Priority |
@@ -63,7 +65,8 @@ Flagged rather than described as debt, since there's no shipped code yet to drif
 | Ticket | Issue | Priority |
 |---|---|---|
 | **Resolved.** #9 (`GridFillClearProgressionRule`) was blocked pending `ProgressionRule`'s redesign; #53 landed, #9 was implemented and closed. | [#62](https://github.com/damien1967/Pheonix/issues/62) (closed) | — |
-| #10 (`GridFillClearScoringRule`) — needs milestone-drop emission support before its Wildcard trigger can be implemented — #55 done, now unblocked | [#63](https://github.com/damien1967/Pheonix/issues/63) | P1 |
+| **Done.** `GridFillClearScoringRule` implements line-clear base bonus (100/line) scaled by a combo multiplier (`= lineCount`, so simultaneous 2/3/4-line clears score 400/900/1600) and emits `Wildcard` drops at session-score milestones (500/1000/2000/5000), one per milestone, computed statelessly by checking whether a threshold sits in `(previousScore, newScore]` — safe because score only rises within a session, so a crossed threshold can never re-fire. Required extending `InteractionResult` with `resolvedGroupCount` (generic "how many outcomes resolved simultaneously" — `lineCount` for this mechanic) since it wasn't exposed anywhere before, only computed and discarded inside `GridFillClearInteractionRule`. **Scoped down:** does not implement "points per cell placed" — `ScoringRule` has no channel for the placed piece's cell count (that data is step 3/Board Mutation output, not step 4/`InteractionResult`); repurposing `resolvedCellCount` (cells *cleared*) for it would be wrong. Filed separately. | [#63](https://github.com/damien1967/Pheonix/issues/63) (closed), [#10](https://github.com/damien1967/Pheonix/issues/10) (closed) | — |
+| Grid-Fill Clear scoring awards nothing for a placement that doesn't clear a line — `ScoringRule` has no data channel for the placed piece's cell count. See #63's row above. | [#102](https://github.com/damien1967/Pheonix/issues/102) | P2 |
 
 ### Clean sweep
 
@@ -87,6 +90,6 @@ All three original P0 roots are closed. #56 (the `SessionOutcome`/`levelOutcome`
 
 **Correction found while starting #53:** this order didn't catch that #53 ("`ProgressionRule` supplies the next `LevelConfig`") had no type to supply until `LevelConfig`/`LevelSequence` existed — that's #57, not one of the three listed roots. **[#57](https://github.com/damien1967/Pheonix/issues/57) was done first** (closed), ahead of #53.
 
-**Remaining open debt:** #63 — P1, unblocked, not a P0 root. #58, #59, #100, #101 are all closed.
+**Remaining open debt:** [#102](https://github.com/damien1967/Pheonix/issues/102) — P2, "points per cell placed" has no data channel into `ScoringRule`. #6, #58, #59, #63, #100, #101 are all closed.
 
-**Per the standing instruction:** the P0 root debt is addressed. #9 (`GridFillClearProgressionRule`) is confirmed unblocked (#62). Phase 3 ticket work can resume; check each ticket's own spec section against `TECHNICAL_DEBT.md` before starting, per the standing rule above.
+**Per the standing instruction:** the P0 root debt is addressed. #9 (`GridFillClearProgressionRule`) is confirmed unblocked (#62) and implemented. #10/#63 (`GridFillClearScoringRule`) is implemented, scoped per the note above; the scoping gap it surfaced is filed as #102. Phase 3 ticket work can resume; check each ticket's own spec section against `TECHNICAL_DEBT.md` before starting, per the standing rule above.

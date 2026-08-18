@@ -32,6 +32,7 @@ class GridFillClearInteractionRule : InteractionRule {
         return InteractionResult(
             board = updatedBoard,
             resolvedCellCount = positionsToClear.size,
+            resolvedGroupCount = lineCount,
             drops = dropsForLineCount(lineCount)
         )
     }
